@@ -133,7 +133,34 @@
      </property>
     </column>
    </widget>
+   <widget class="QCheckBox" name="detrend_and_demean_check_box">
+    <property name="geometry">
+     <rect>
+      <x>390</x>
+      <y>180</y>
+      <width>151</width>
+      <height>18</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Detrend and Demean</string>
+    </property>
+   </widget>
+   <widget class="QCheckBox" name="normalize_check_box">
+    <property name="geometry">
+     <rect>
+      <x>580</x>
+      <y>180</y>
+      <width>85</width>
+      <height>18</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Normalize</string>
+    </property>
+   </widget>
   </widget>
+  <widget class="QStatusBar" name="status_bar"/>
  </widget>
  <customwidgets>
   <customwidget>

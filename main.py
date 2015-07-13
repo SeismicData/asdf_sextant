@@ -24,6 +24,8 @@ import sys
 
 import pyasdf
 
+from DateAxisItem import DateAxisItem
+
 
 # Default to antialiased drawing.
 pg.setConfigOptions(antialias=True, foreground=(50, 50, 50), background=None)
@@ -101,6 +103,62 @@ class Window(QtGui.QMainWindow):
             items.append(item)
         self.ui.station_view.insertTopLevelItems(0, items)
 
+        sb = self.ui.status_bar
+        if hasattr(sb, "_widgets"):
+            for i in sb._widgets:
+                sb.removeWidget(i)
+
+        w = QtGui.QLabel("File: %s (%s)" % (self.ds.filename,
+                                            self.ds.pretty_filesize))
+        sb._widgets = [w]
+        sb.addPermanentWidget(w)
+        w.show()
+        sb.show()
+        sb.reformat()
+
+    def on_detrend_and_demean_check_box_stateChanged(self, state):
+        self.update_waveform_plot()
+
+    def on_normalize_check_box_stateChanged(self, state):
+        self.update_waveform_plot()
+
+    def update_waveform_plot(self):
+
+        #from PyQt4.QtCore import pyqtRemoveInputHook
+        #pyqtRemoveInputHook()
+        #from IPython.core.debugger import Tracer; Tracer(colors="Linux")()
+
+        # Get the filter settings.
+        filter_settings = {}
+        filter_settings["detrend_and_demean"] = \
+            self.ui.detrend_and_demean_check_box.isChecked()
+        filter_settings["normalize"] = self.ui.normalize_check_box.isChecked()
+
+        temp_st = self.st.copy()
+
+        if filter_settings["detrend_and_demean"]:
+            temp_st.detrend("linear")
+            temp_st.detrend("demean")
+
+        if filter_settings["normalize"]:
+            temp_st.normalize()
+
+        self.ui.graph.clear()
+        all_plots = []
+        for _i, tr in enumerate(temp_st):
+            plot = self.ui.graph.addPlot(
+                _i, 0, title=tr.id,
+                axisItems={'bottom': DateAxisItem(orientation='bottom')})
+            all_plots.append(plot)
+            plot.plot(tr.times() + tr.stats.starttime.timestamp, tr.data,
+                      pen="#333333")
+
+        for plot in all_plots[1:]:
+            all_plots[0].setXLink(plot)
+            plot.setXLink(all_plots[0])
+            all_plots[0].setYLink(plot)
+            plot.setYLink(all_plots[0])
+
     def on_station_view_itemClicked(self, item, column):
         if item.parent() is None:
             return
@@ -110,19 +168,9 @@ class Window(QtGui.QMainWindow):
         if tag == "StationXML":
             return
 
-        st = getattr(getattr(self.ds.waveforms,
-                             station.replace(".", "_")), tag).sort()
-
-
-        self.ui.graph.clear()
-        for _i, tr in enumerate(st):
-            plot = self.ui.graph.addPlot(_i, 0, title=tr.id)
-            plot.plot(tr.data)
-
-        #from PyQt4.QtCore import pyqtRemoveInputHook
-        #pyqtRemoveInputHook()
-        #from IPython.core.debugger import Tracer; Tracer(colors="Linux")()
-
+        self.st = getattr(getattr(self.ds.waveforms,
+                                  station.replace(".", "_")), tag).sort()
+        self.update_waveform_plot()
 
 
 def launch():
