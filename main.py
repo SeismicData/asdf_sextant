@@ -108,8 +108,8 @@ class Window(QtGui.QMainWindow):
             for i in sb._widgets:
                 sb.removeWidget(i)
 
-        w = QtGui.QLabel("File: %s (%s)" % (self.ds.filename,
-                                            self.ds.pretty_filesize))
+        w = QtGui.QLabel("File: %s    (%s)" % (self.ds.filename,
+                                               self.ds.pretty_filesize))
         sb._widgets = [w]
         sb.addPermanentWidget(w)
         w.show()
