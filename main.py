@@ -14,6 +14,7 @@ from __future__ import (absolute_import, division, print_function,
 
 from PyQt4 import QtGui, QtCore
 import pyqtgraph as pg
+import qdarkstyle
 
 from glob import iglob
 import imp
@@ -28,7 +29,7 @@ from DateAxisItem import DateAxisItem
 
 
 # Default to antialiased drawing.
-pg.setConfigOptions(antialias=True, foreground=(50, 50, 50), background=None)
+pg.setConfigOptions(antialias=True, foreground=(200, 200, 200), background=None)
 
 
 def compile_and_import_ui_files():
@@ -150,8 +151,8 @@ class Window(QtGui.QMainWindow):
                 _i, 0, title=tr.id,
                 axisItems={'bottom': DateAxisItem(orientation='bottom')})
             all_plots.append(plot)
-            plot.plot(tr.times() + tr.stats.starttime.timestamp, tr.data,
-                      pen="#333333")
+            plot.plot(tr.times() + tr.stats.starttime.timestamp, tr.data)
+                      #pen="#444444")
 
         for plot in all_plots[1:]:
             all_plots[0].setXLink(plot)
@@ -179,6 +180,7 @@ def launch():
 
     # Launch and open the window.
     app = QtGui.QApplication(sys.argv, QtGui.QApplication.GuiClient)
+    app.setStyleSheet(qdarkstyle.load_stylesheet(pyside=False))
     window = Window()
 
     # Show and bring window to foreground.
