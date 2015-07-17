@@ -22,6 +22,9 @@ import inspect
 import os
 import sys
 
+from prov import dot
+import pydot
+
 
 import pyasdf
 
@@ -177,7 +180,11 @@ class Window(QtGui.QMainWindow):
             plot.setYLink(all_plots[0])
 
     def show_provenance_document(self, document_name):
-        print(document_name)
+        tmp_svg = "temp.svg"
+        doc = getattr(self.ds.provenance, document_name)
+        doc.plot(filename=tmp_svg, use_labels=True)
+
+        self.ui.provenance_graphics_view.open_file(tmp_svg)
 
     def on_station_view_itemClicked(self, item, column):
         if item.parent() is None:

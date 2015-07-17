@@ -1,7 +1,7 @@
 import sip
 sip.setapi('QString', 2)
 
-from PyQt4 import QtGui, QtSvg  # NOQA
+from PyQt4 import QtGui, QtSvg, QtCore  # NOQA
 
 
 class SvgGraphicsView(QtGui.QGraphicsView):
@@ -18,7 +18,9 @@ class SvgGraphicsView(QtGui.QGraphicsView):
         self.setDragMode(QtGui.QGraphicsView.ScrollHandDrag)
         self.setViewportUpdateMode(QtGui.QGraphicsView.FullViewportUpdate)
 
-    def openFile(self, svg_file):
+    def open_file(self, filename):
+        svg_file = QtCore.QFile(filename)
+
         if not svg_file.exists():
             return
 

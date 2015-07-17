@@ -154,7 +154,7 @@
          <widget class="QListView" name="provenance_list_view"/>
         </item>
         <item>
-         <widget class="SvgGraphicsView" name="graphicsView"/>
+         <widget class="SvgGraphicsView" name="provenance_graphics_view"/>
         </item>
        </layout>
       </widget>
