@@ -69,6 +69,10 @@ class Window(QtGui.QMainWindow):
         self.ui = sd5_sextant_window.Ui_MainWindow()  # NOQA
         self.ui.setupUi(self)
 
+        self.provenance_list_model = QtGui.QStandardItemModel(
+            self.ui.provenance_list_view)
+        self.ui.provenance_list_view.setModel(self.provenance_list_model)
+
     def on_select_file_button_released(self):
         """
         Fill the station tree widget upon opening a new file.
@@ -85,6 +89,7 @@ class Window(QtGui.QMainWindow):
 
         self.ui.station_view.clear()
 
+        # Add all the waveforms and stations.
         items = []
         for station in self.ds.waveforms:
             item = QtGui.QTreeWidgetItem([station._station_name])
@@ -103,6 +108,12 @@ class Window(QtGui.QMainWindow):
 
             items.append(item)
         self.ui.station_view.insertTopLevelItems(0, items)
+
+        # Add all the provenance items
+        self.provenance_list_model.clear()
+        for provenance in dir(self.ds.provenance):
+            item = QtGui.QStandardItem(provenance)
+            self.provenance_list_model.appendRow(item)
 
         sb = self.ui.status_bar
         if hasattr(sb, "_widgets"):
@@ -145,20 +156,28 @@ class Window(QtGui.QMainWindow):
             temp_st.normalize()
 
         self.ui.graph.clear()
+
+        #from PyQt4.QtCore import pyqtRemoveInputHook
+        #pyqtRemoveInputHook()
+        #from IPython.core.debugger import Tracer; Tracer(colors="Linux")()
+
         all_plots = []
         for _i, tr in enumerate(temp_st):
             plot = self.ui.graph.addPlot(
                 _i, 0, title=tr.id,
                 axisItems={'bottom': DateAxisItem(orientation='bottom')})
+            plot.show()
             all_plots.append(plot)
             plot.plot(tr.times() + tr.stats.starttime.timestamp, tr.data)
-                      #pen="#444444")
 
         for plot in all_plots[1:]:
             all_plots[0].setXLink(plot)
             plot.setXLink(all_plots[0])
             all_plots[0].setYLink(plot)
             plot.setYLink(all_plots[0])
+
+    def show_provenance_document(self, document_name):
+        print(document_name)
 
     def on_station_view_itemClicked(self, item, column):
         if item.parent() is None:
@@ -172,6 +191,9 @@ class Window(QtGui.QMainWindow):
         self.st = getattr(getattr(self.ds.waveforms,
                                   station.replace(".", "_")), tag).sort()
         self.update_waveform_plot()
+
+    def on_provenance_list_view_clicked(self, model_index):
+        self.show_provenance_document(model_index.data())
 
 
 def launch():
