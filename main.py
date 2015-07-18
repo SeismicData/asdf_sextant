@@ -12,13 +12,14 @@ Graphical user interface for Instaseis.
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
-from PyQt4 import QtGui, QtCore
+from PyQt4 import QtGui, QtCore, QtWebKit
 import pyqtgraph as pg
 import qdarkstyle
 
 from glob import iglob
 import imp
 import inspect
+import itertools
 import os
 import sys
 
@@ -76,6 +77,69 @@ class Window(QtGui.QMainWindow):
             self.ui.provenance_list_view)
         self.ui.provenance_list_view.setModel(self.provenance_list_model)
 
+        map_file = os.path.abspath("resources/index.html")
+        self.ui.web_view.load(QtCore.QUrl.fromLocalFile(map_file))
+        # Enable debugging of the web view.
+        self.ui.web_view.settings().setAttribute(
+            QtWebKit.QWebSettings.DeveloperExtrasEnabled, True)
+
+
+    def build_station_view_list(self):
+        if not hasattr(self, "ds") or not self.ds:
+            return
+        self.ui.station_view.clear()
+
+        items = []
+
+        if self.ui.group_by_network_check_box.isChecked():
+            for key, group in itertools.groupby(
+                    self.ds.waveforms,
+                    key=lambda x: x._station_name.split(".")[0]):
+                network_item = QtGui.QTreeWidgetItem([key])
+                for station in group:
+                    station_item = QtGui.QTreeWidgetItem([
+                        station._station_name.split(".")[-1]])
+
+                    contents = dir(station)
+                    waveform_contents = sorted([
+                        _i for _i in contents
+                        if _i not in ("StationXML", "_station_name",
+                                      "coordinates", "channel_coordinates")])
+
+                    # Add children.
+                    children = []
+                    if "StationXML" in contents:
+                        children.append(QtGui.QTreeWidgetItem(["StationXML"]))
+                    for waveform in waveform_contents:
+                        children.append(QtGui.QTreeWidgetItem([waveform]))
+                    station_item.insertChildren(0, children)
+
+                    network_item.insertChild(0, station_item)
+                items.append(network_item)
+
+        else:
+            # Add all the waveforms and stations.
+            for station in self.ds.waveforms:
+                item = QtGui.QTreeWidgetItem([station._station_name])
+
+                contents = dir(station)
+                waveform_contents = sorted([
+                    _i for _i in contents
+                    if _i not in ("StationXML", "_station_name", "coordinates",
+                                  "channel_coordinates")])
+
+                # Add children.
+                children = []
+                if "StationXML" in contents:
+                    children.append(QtGui.QTreeWidgetItem(["StationXML"]))
+                for waveform in waveform_contents:
+                    children.append(QtGui.QTreeWidgetItem([waveform]))
+                item.insertChildren(0, children)
+
+                items.append(item)
+
+        self.ui.station_view.insertTopLevelItems(0, items)
+
     def on_select_file_button_released(self):
         """
         Fill the station tree widget upon opening a new file.
@@ -90,27 +154,16 @@ class Window(QtGui.QMainWindow):
 
         self.ds = pyasdf.ASDFDataSet(self.filename)
 
-        self.ui.station_view.clear()
+        for station_id, coordinates in self.ds.get_all_coordinates().items():
+            if not coordinates:
+                continue
+            js_call = "addStation('{station_id}', {latitude}, {longitude})"
+            self.ui.web_view.page().mainFrame().evaluateJavaScript(
+                js_call.format(station_id=station_id,
+                               latitude=coordinates["latitude"],
+                               longitude=coordinates["longitude"]))
 
-        # Add all the waveforms and stations.
-        items = []
-        for station in self.ds.waveforms:
-            item = QtGui.QTreeWidgetItem([station._station_name])
-
-            contents = dir(station)
-            waveform_contents = sorted([_i for _i in contents if _i not in
-                                        ("StationXML", "_station_name")])
-
-            # Add children.
-            children = []
-            if "StationXML" in contents:
-                children.append(QtGui.QTreeWidgetItem(["StationXML"]))
-            for waveform in waveform_contents:
-                children.append(QtGui.QTreeWidgetItem([waveform]))
-            item.insertChildren(0, children)
-
-            items.append(item)
-        self.ui.station_view.insertTopLevelItems(0, items)
+        self.build_station_view_list()
 
         # Add all the provenance items
         self.provenance_list_model.clear()
@@ -136,6 +189,9 @@ class Window(QtGui.QMainWindow):
 
     def on_normalize_check_box_stateChanged(self, state):
         self.update_waveform_plot()
+
+    def on_group_by_network_check_box_stateChanged(self, state):
+        self.build_station_view_list()
 
     def update_waveform_plot(self):
 
@@ -186,13 +242,22 @@ class Window(QtGui.QMainWindow):
 
         self.ui.provenance_graphics_view.open_file(tmp_svg)
 
+
     def on_station_view_itemClicked(self, item, column):
-        if item.parent() is None:
+        # Only bottom level items can be plotted.
+        if item.childCount() != 0:
             return
+
         station = item.parent().text(0)
+
+        if "." not in station:
+            station = "%s.%s" % (item.parent().parent().text(0), station)
+
         tag = item.text(0)
 
         if tag == "StationXML":
+            getattr(getattr(self.ds.waveforms, station.replace(".", "_")),
+                    "StationXML").plot_response(0.001)
             return
 
         self.st = getattr(getattr(self.ds.waveforms,
