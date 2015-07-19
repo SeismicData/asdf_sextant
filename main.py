@@ -23,17 +23,22 @@ import itertools
 import os
 import sys
 
-from prov import dot
-import pydot
-
-
 import pyasdf
 
 from DateAxisItem import DateAxisItem
 
 
+# Enums only exists in Python 3 and we don't really need them here...
+STATION_VIEW_ITEM_TYPES = {
+    "NETWORK": 0,
+    "STATION": 1,
+    "STATIONXML": 2,
+    "WAVEFORM": 3}
+
+
 # Default to antialiased drawing.
-pg.setConfigOptions(antialias=True, foreground=(200, 200, 200), background=None)
+pg.setConfigOptions(antialias=True, foreground=(200, 200, 200),
+                    background=None)
 
 
 def compile_and_import_ui_files():
@@ -83,6 +88,15 @@ class Window(QtGui.QMainWindow):
         self.ui.web_view.settings().setAttribute(
             QtWebKit.QWebSettings.DeveloperExtrasEnabled, True)
 
+    def __connect_signal_and_slots(self):
+        """
+        Connect special signals and slots not covered by the named signals and
+        slots from pyuic4.
+        """
+        self.ui.station_view.itemEntered.connect(
+            self.on_station_view_itemEntered)
+        self.ui.station_view.itemExited.connect(
+            self.on_station_view_itemExited)
 
     def build_station_view_list(self):
         if not hasattr(self, "ds") or not self.ds:
@@ -95,10 +109,13 @@ class Window(QtGui.QMainWindow):
             for key, group in itertools.groupby(
                     self.ds.waveforms,
                     key=lambda x: x._station_name.split(".")[0]):
-                network_item = QtGui.QTreeWidgetItem([key])
+                network_item = QtGui.QTreeWidgetItem(
+                    [key],
+                    type=STATION_VIEW_ITEM_TYPES["NETWORK"])
                 for station in group:
                     station_item = QtGui.QTreeWidgetItem([
-                        station._station_name.split(".")[-1]])
+                        station._station_name.split(".")[-1]],
+                        type=STATION_VIEW_ITEM_TYPES["STATION"])
 
                     contents = dir(station)
                     waveform_contents = sorted([
@@ -109,9 +126,15 @@ class Window(QtGui.QMainWindow):
                     # Add children.
                     children = []
                     if "StationXML" in contents:
-                        children.append(QtGui.QTreeWidgetItem(["StationXML"]))
+                        children.append(
+                            QtGui.QTreeWidgetItem(
+                                ["StationXML"],
+                                type=STATION_VIEW_ITEM_TYPES["STATIONXML"]))
                     for waveform in waveform_contents:
-                        children.append(QtGui.QTreeWidgetItem([waveform]))
+                        children.append(
+                            QtGui.QTreeWidgetItem(
+                                [waveform],
+                                type=STATION_VIEW_ITEM_TYPES["WAVEFORM"]))
                     station_item.insertChildren(0, children)
 
                     network_item.insertChild(0, station_item)
@@ -120,7 +143,9 @@ class Window(QtGui.QMainWindow):
         else:
             # Add all the waveforms and stations.
             for station in self.ds.waveforms:
-                item = QtGui.QTreeWidgetItem([station._station_name])
+                item = QtGui.QTreeWidgetItem(
+                    [station._station_name],
+                    type=STATION_VIEW_ITEM_TYPES["STATION"])
 
                 contents = dir(station)
                 waveform_contents = sorted([
@@ -131,9 +156,15 @@ class Window(QtGui.QMainWindow):
                 # Add children.
                 children = []
                 if "StationXML" in contents:
-                    children.append(QtGui.QTreeWidgetItem(["StationXML"]))
+                    children.append(
+                        QtGui.QTreeWidgetItem(
+                            ["StationXML"],
+                            type=STATION_VIEW_ITEM_TYPES["STATIONXML"]))
                 for waveform in waveform_contents:
-                    children.append(QtGui.QTreeWidgetItem([waveform]))
+                    children.append(
+                        QtGui.QTreeWidgetItem(
+                            [waveform],
+                            type=STATION_VIEW_ITEM_TYPES["WAVEFORM"]))
                 item.insertChildren(0, children)
 
                 items.append(item)
@@ -242,30 +273,40 @@ class Window(QtGui.QMainWindow):
 
         self.ui.provenance_graphics_view.open_file(tmp_svg)
 
-
     def on_station_view_itemClicked(self, item, column):
-        # Only bottom level items can be plotted.
-        if item.childCount() != 0:
-            return
+        t = item.type()
 
-        station = item.parent().text(0)
+        def get_station(item):
+            station = item.parent().text(0)
+            if "." not in station:
+                station = item.parent().parent().text(0) + "." + station
+            return station
 
-        if "." not in station:
-            station = "%s.%s" % (item.parent().parent().text(0), station)
-
-        tag = item.text(0)
-
-        if tag == "StationXML":
+        if t == STATION_VIEW_ITEM_TYPES["NETWORK"]:
+            pass
+        elif t == STATION_VIEW_ITEM_TYPES["STATION"]:
+            pass
+        elif t == STATION_VIEW_ITEM_TYPES["STATIONXML"]:
+            station = get_station(item)
             getattr(getattr(self.ds.waveforms, station.replace(".", "_")),
                     "StationXML").plot_response(0.001)
-            return
-
-        self.st = getattr(getattr(self.ds.waveforms,
-                                  station.replace(".", "_")), tag).sort()
-        self.update_waveform_plot()
+        elif t == STATION_VIEW_ITEM_TYPES["WAVEFORM"]:
+            station = get_station(item)
+            self.st = getattr(getattr(
+                self.ds.waveforms, station.replace(".", "_")),
+                item.text(0)).sort()
+            self.update_waveform_plot()
+        else:
+            pass
 
     def on_provenance_list_view_clicked(self, model_index):
         self.show_provenance_document(model_index.data())
+
+    def on_station_view_itemEntered(self, *args):
+        print("item entered", args)
+
+    def on_station_view_itemExited(self, *args):
+        print("item exited", args)
 
 
 def launch():
