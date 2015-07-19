@@ -302,8 +302,35 @@ class Window(QtGui.QMainWindow):
     def on_provenance_list_view_clicked(self, model_index):
         self.show_provenance_document(model_index.data())
 
-    def on_station_view_itemEntered(self, *args):
-        print("item entered", args)
+    def on_station_view_itemEntered(self, item):
+
+        t = item.type()
+
+        def get_station(item, parent=True):
+            if parent:
+                station = item.parent().text(0)
+                if "." not in station:
+                    station = item.parent().parent().text(0) + "." + station
+            else:
+                station = item.text(0)
+                if "." not in station:
+                    station = item.parent().text(0) + "." + station
+            return station
+
+        if t == STATION_VIEW_ITEM_TYPES["NETWORK"]:
+            network = item.text(0)
+            print("entered network", network)
+        elif t == STATION_VIEW_ITEM_TYPES["STATION"]:
+            station = get_station(item, parent=False)
+            print("entered station", station)
+        elif t == STATION_VIEW_ITEM_TYPES["STATIONXML"]:
+            station = get_station(item)
+            print("entered stationxml", station)
+        elif t == STATION_VIEW_ITEM_TYPES["WAVEFORM"]:
+            station = get_station(item)
+            print("entered stationwaveform", station)
+        else:
+            pass
 
     def on_station_view_itemExited(self, *args):
         print("item exited", args)
