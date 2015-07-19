@@ -64,6 +64,6 @@ function highlightNetwork(network_id) {
 }
 
 function highlightStation(station_id) {
-    var value = station[station_id];
+    var value = stations[station_id];
     setMarkerActive(value)
-
+}
