@@ -327,12 +327,10 @@ class Window(QtGui.QMainWindow):
             self.ui.web_view.page().mainFrame().evaluateJavaScript(js_call)
         elif t == STATION_VIEW_ITEM_TYPES["STATIONXML"]:
             station = get_station(item)
-            station = get_station(item, parent=False)
             js_call = "highlightStation('{station}')".format(station=station)
             self.ui.web_view.page().mainFrame().evaluateJavaScript(js_call)
         elif t == STATION_VIEW_ITEM_TYPES["WAVEFORM"]:
             station = get_station(item)
-            station = get_station(item, parent=False)
             js_call = "highlightStation('{station}')".format(station=station)
             self.ui.web_view.page().mainFrame().evaluateJavaScript(js_call)
         else:
