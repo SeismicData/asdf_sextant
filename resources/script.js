@@ -57,8 +57,13 @@ function highlightNetwork(network_id) {
         if (_.startsWith(key, network_id + '.')) {
             setMarkerActive(value)
         }
-        else {
-            setMarkerInactive(value)
-        }
+        //else {
+            //setMarkerInactive(value)
+        //}
     });
 }
+
+function highlightStation(station_id) {
+    var value = station[station_id];
+    setMarkerActive(value)
+
