@@ -319,21 +319,20 @@ class Window(QtGui.QMainWindow):
 
         if t == STATION_VIEW_ITEM_TYPES["NETWORK"]:
             network = item.text(0)
-            print("entered network", network)
+            js_call = "highlightNetwork('{network}')".format(network=network)
+            self.ui.web_view.page().mainFrame().evaluateJavaScript(js_call)
         elif t == STATION_VIEW_ITEM_TYPES["STATION"]:
             station = get_station(item, parent=False)
-            print("entered station", station)
         elif t == STATION_VIEW_ITEM_TYPES["STATIONXML"]:
             station = get_station(item)
-            print("entered stationxml", station)
         elif t == STATION_VIEW_ITEM_TYPES["WAVEFORM"]:
             station = get_station(item)
-            print("entered stationwaveform", station)
         else:
             pass
 
     def on_station_view_itemExited(self, *args):
-        print("item exited", args)
+        js_call = "setAllInactive()"
+        self.ui.web_view.page().mainFrame().evaluateJavaScript(js_call)
 
 
 def launch():
