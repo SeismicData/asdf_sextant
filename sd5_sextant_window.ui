@@ -76,6 +76,9 @@
             <property name="text">
              <string>Group By Network</string>
             </property>
+            <property name="checked">
+             <bool>true</bool>
+            </property>
            </widget>
           </item>
           <item>
@@ -159,10 +162,6 @@
          </layout>
         </item>
        </layout>
-       <zorder>station_view</zorder>
-       <zorder>graph</zorder>
-       <zorder>group_by_network_check_box</zorder>
-       <zorder>web_view</zorder>
       </widget>
       <widget class="QWidget" name="tab_2">
        <attribute name="title">
