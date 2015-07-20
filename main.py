@@ -287,20 +287,27 @@ class Window(QtGui.QMainWindow):
         #pyqtRemoveInputHook()
         #from IPython.core.debugger import Tracer; Tracer(colors="Linux")()
 
+        starttimes = []
+        endtimes = []
+
         all_plots = []
         for _i, tr in enumerate(temp_st):
             plot = self.ui.graph.addPlot(
                 _i, 0, title=tr.id,
-                axisItems={'bottom': DateAxisItem(orientation='bottom')})
+                axisItems={'bottom': DateAxisItem(orientation='bottom',
+                                                  utcOffset=0)})
             plot.show()
             all_plots.append(plot)
             plot.plot(tr.times() + tr.stats.starttime.timestamp, tr.data)
+            starttimes.append(tr.stats.starttime)
+            endtimes.append(tr.stats.endtime)
 
         for plot in all_plots[1:]:
-            all_plots[0].setXLink(plot)
             plot.setXLink(all_plots[0])
-            all_plots[0].setYLink(plot)
             plot.setYLink(all_plots[0])
+
+        all_plots[0].setXRange(min(starttimes).timestamp,
+                               max(endtimes).timestamp)
 
     def show_provenance_document(self, document_name):
         tmp_svg = "temp.svg"
