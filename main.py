@@ -352,6 +352,12 @@ class Window(QtGui.QMainWindow):
             plot = graph.addPlot(title="%s - %s" % (data_type, tag))
             plot.show()
             plot.plot(aux_data.data.value)
+        elif len(aux_data.data.shape) == 2:
+            img = pg.ImageItem(border="#3D8EC9")
+            img.setImage(aux_data.data.value)
+            vb = graph.addViewBox()
+            vb.setAspectLocked(True)
+            vb.addItem(img)
         else:
             raise NotImplementedError
 
@@ -377,7 +383,7 @@ class Window(QtGui.QMainWindow):
             ("shape", str(aux_data.data.shape)),
             ("dtype", str(aux_data.data.dtype)),
             ("dimensions", str(len(aux_data.data.shape))),
-            ("size", sizeof_fmt(
+            ("uncompressed size", sizeof_fmt(
                 aux_data.data.dtype.itemsize * aux_data.data.size))]
 
         tv = self.ui.auxiliary_data_info_table_view
