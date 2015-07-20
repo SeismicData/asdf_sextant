@@ -167,6 +167,36 @@
        <attribute name="title">
         <string>Auxiliary Data</string>
        </attribute>
+       <layout class="QHBoxLayout" name="horizontalLayout_5" stretch="0,10">
+        <item>
+         <widget class="QTreeWidget" name="auxiliary_data_tree_view">
+          <attribute name="headerVisible">
+           <bool>false</bool>
+          </attribute>
+          <column>
+           <property name="text">
+            <string notr="true">1</string>
+           </property>
+          </column>
+         </widget>
+        </item>
+        <item>
+         <widget class="GraphicsLayoutWidget" name="auxiliary_data_graph">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="mouseTracking">
+           <bool>false</bool>
+          </property>
+          <property name="toolTip">
+           <string/>
+          </property>
+         </widget>
+        </item>
+       </layout>
       </widget>
       <widget class="QWidget" name="tab_3">
        <attribute name="title">

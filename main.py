@@ -35,6 +35,10 @@ STATION_VIEW_ITEM_TYPES = {
     "STATIONXML": 2,
     "WAVEFORM": 3}
 
+AUX_DATA_ITEM_TYPES = {
+    "DATA_TYPE": 0,
+    "TAG": 1}
+
 
 # Default to antialiased drawing.
 pg.setConfigOptions(antialias=True, foreground=(200, 200, 200),
@@ -202,6 +206,25 @@ class Window(QtGui.QMainWindow):
         for provenance in dir(self.ds.provenance):
             item = QtGui.QStandardItem(provenance)
             self.provenance_list_model.appendRow(item)
+
+        # Also add the auxiliary data.
+        items = []
+        for data_type in sorted(dir(self.ds.auxiliary_data)):
+            data_type_item = QtGui.QTreeWidgetItem(
+                [data_type],
+                type=AUX_DATA_ITEM_TYPES["DATA_TYPE"])
+
+            children = []
+            data = getattr(self.ds.auxiliary_data, data_type)
+            for tag in sorted(dir(data)):
+                children.append(
+                    QtGui.QTreeWidgetItem(
+                        [tag],
+                        type=AUX_DATA_ITEM_TYPES["TAG"]))
+            data_type_item.addChildren(children)
+            items.append(data_type_item)
+
+        self.ui.auxiliary_data_tree_view.insertTopLevelItems(0, items)
 
         sb = self.ui.status_bar
         if hasattr(sb, "_widgets"):
