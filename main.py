@@ -350,6 +350,10 @@ def launch():
     app.setStyleSheet(qdarkstyle.load_stylesheet(pyside=False))
     window = Window()
 
+    # Move window to center of screen.
+    window.move(
+        app.desktop().screen().rect().center() - window.rect().center())
+
     # Show and bring window to foreground.
     window.show()
     app.installEventFilter(window)
