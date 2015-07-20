@@ -180,10 +180,9 @@ class Window(QtGui.QMainWindow):
         """
         Fill the station tree widget upon opening a new file.
         """
-        pwd = os.getcwd()
         self.filename = str(QtGui.QFileDialog.getOpenFileName(
             parent=self, caption="Choose File",
-            directory=pwd,
+            directory=os.path.expanduser("~"),
             filter="SD5 files (*.h5 *.sd5)"))
         if not self.filename:
             return
@@ -322,6 +321,26 @@ class Window(QtGui.QMainWindow):
             self.update_waveform_plot()
         else:
             pass
+
+    def on_auxiliary_data_tree_view_itemClicked(self, item, column):
+        t = item.type()
+        if t != AUX_DATA_ITEM_TYPES["TAG"]:
+            return
+
+        tag = item.text(0)
+        data_type = item.parent().text(0)
+
+        graph = self.ui.auxiliary_data_graph
+        graph.clear()
+
+        aux_data = getattr(getattr(self.ds.auxiliary_data, data_type), tag)
+
+        if len(aux_data.data.shape) == 1:
+            plot = graph.addPlot(title="%s - %s" % (data_type, tag))
+            plot.show()
+            plot.plot(aux_data.data.value)
+        else:
+            raise NotImplementedError
 
     def on_provenance_list_view_clicked(self, model_index):
         self.show_provenance_document(model_index.data())
