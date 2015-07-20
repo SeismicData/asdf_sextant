@@ -75,6 +75,19 @@ def compile_and_import_ui_files():
             print(e.message)
 
 
+def sizeof_fmt(num):
+    """
+    Handy formatting for human readable filesize.
+
+    From http://stackoverflow.com/a/1094933/1657047
+    """
+    for x in ["bytes", "KB", "MB", "GB"]:
+        if num < 1024.0 and num > -1024.0:
+            return "%3.1f %s" % (num, x)
+        num /= 1024.0
+    return "%3.1f %s" % (num, "TB")
+
+
 class Window(QtGui.QMainWindow):
     def __init__(self):
         QtGui.QMainWindow.__init__(self)
@@ -341,6 +354,47 @@ class Window(QtGui.QMainWindow):
             plot.plot(aux_data.data.value)
         else:
             raise NotImplementedError
+
+        # Show the parameters.
+        tv = self.ui.auxiliary_data_detail_table_view
+        tv.clear()
+
+        tv.setRowCount(len(aux_data.parameters))
+        tv.setColumnCount(2)
+        tv.setHorizontalHeaderLabels(["Parameter", "Value"])
+        tv.horizontalHeader().setResizeMode(QtGui.QHeaderView.Stretch)
+        tv.verticalHeader().hide()
+
+        for _i, key in enumerate(sorted(aux_data.parameters.keys())):
+            key_item = QtGui.QTableWidgetItem(key)
+            value_item = QtGui.QTableWidgetItem(str(aux_data.parameters[key]))
+
+            tv.setItem(_i, 0, key_item)
+            tv.setItem(_i, 1, value_item)
+
+        # Show details about the data.
+        details = [
+            ("shape", str(aux_data.data.shape)),
+            ("dtype", str(aux_data.data.dtype)),
+            ("dimensions", str(len(aux_data.data.shape))),
+            ("size", sizeof_fmt(
+                aux_data.data.dtype.itemsize * aux_data.data.size))]
+
+        tv = self.ui.auxiliary_data_info_table_view
+        tv.clear()
+
+        tv.setRowCount(len(details))
+        tv.setColumnCount(2)
+        tv.setHorizontalHeaderLabels(["Attribute", "Value"])
+        tv.horizontalHeader().setResizeMode(QtGui.QHeaderView.Stretch)
+        tv.verticalHeader().hide()
+
+        for _i, item in enumerate(details):
+            key_item = QtGui.QTableWidgetItem(item[0])
+            value_item = QtGui.QTableWidgetItem(item[1])
+
+            tv.setItem(_i, 0, key_item)
+            tv.setItem(_i, 1, value_item)
 
     def on_provenance_list_view_clicked(self, model_index):
         self.show_provenance_document(model_index.data())
