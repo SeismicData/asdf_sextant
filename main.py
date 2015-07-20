@@ -112,7 +112,8 @@ class Window(QtGui.QMainWindow):
                 network_item = QtGui.QTreeWidgetItem(
                     [key],
                     type=STATION_VIEW_ITEM_TYPES["NETWORK"])
-                for station in group:
+                group = sorted(group, key=lambda x: x._station_name)
+                for station in sorted(group, key=lambda x: x._station_name):
                     station_item = QtGui.QTreeWidgetItem([
                         station._station_name.split(".")[-1]],
                         type=STATION_VIEW_ITEM_TYPES["STATION"])
@@ -135,9 +136,9 @@ class Window(QtGui.QMainWindow):
                             QtGui.QTreeWidgetItem(
                                 [waveform],
                                 type=STATION_VIEW_ITEM_TYPES["WAVEFORM"]))
-                    station_item.insertChildren(0, children)
+                    station_item.addChildren(children)
 
-                    network_item.insertChild(0, station_item)
+                    network_item.addChild(station_item)
                 items.append(network_item)
 
         else:
@@ -165,7 +166,7 @@ class Window(QtGui.QMainWindow):
                         QtGui.QTreeWidgetItem(
                             [waveform],
                             type=STATION_VIEW_ITEM_TYPES["WAVEFORM"]))
-                item.insertChildren(0, children)
+                item.addChildren(children)
 
                 items.append(item)
 
