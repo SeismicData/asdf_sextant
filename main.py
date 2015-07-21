@@ -315,7 +315,8 @@ class Window(QtGui.QMainWindow):
             attributes = dict(
                 self.ds._waveform_group[obj._station_name][waveform].attrs)
 
-            for key, value in attributes.items():
+            for key, value in sorted([_i for _i in attributes.items()],
+                                     key=lambda x: x[0]):
                 if not key.endswith("_id"):
                     continue
                 key = key[:-3].capitalize()
