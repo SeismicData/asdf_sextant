@@ -221,6 +221,9 @@ class Window(QtGui.QMainWindow):
         popup = QtGui.QMenu()
 
         for waveform in obj.list():
+            if not waveform.endswith(
+                    "__" + self._state["current_waveform_tag"]):
+                continue
             menu = popup.addMenu(waveform)
             attributes = dict(
                 self.ds._waveform_group[obj._station_name][waveform].attrs)
@@ -413,11 +416,11 @@ class Window(QtGui.QMainWindow):
             pass
         elif t == STATION_VIEW_ITEM_TYPES["STATIONXML"]:
             station = get_station(item)
-            self._state["current_station_object"] = self.ds.waveforms[station]
             self.ds.waveforms[station].StationXML.plot_response(0.001)
         elif t == STATION_VIEW_ITEM_TYPES["WAVEFORM"]:
             station = get_station(item)
             self._state["current_station_object"] = self.ds.waveforms[station]
+            self._state["current_waveform_tag"] = item.text(0)
             self.st = self.ds.waveforms[station][item.text(0)].sort()
             self.update_waveform_plot()
         else:
