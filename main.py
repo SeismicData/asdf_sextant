@@ -182,6 +182,47 @@ class Window(QtGui.QMainWindow):
     def on_reset_view_push_button_released(self):
         self.reset_view()
 
+    def show_referenced_object(self, object_type, object_id):
+        print(object_type, object_id)
+
+    def on_references_push_button_released(self):
+        if "current_station_object" not in self._state:
+            return
+        obj = self._state["current_station_object"]
+
+        popup = QtGui.QMenu()
+
+        for waveform in obj.list():
+            menu = popup.addMenu(waveform)
+            attributes = dict(
+                self.ds._waveform_group[obj._station_name][waveform].attrs)
+
+            for key, value in attributes.items():
+                if not key.endswith("_id"):
+                    continue
+                key = key[:-3].capitalize()
+
+                try:
+                    value = value.decode()
+                except:
+                    pass
+
+                def get_action_fct():
+                    _key = key
+                    _value = value
+
+                    def _action(check):
+                        self.show_referenced_object(_key, _value)
+
+                    return _action
+
+                # Bind with a closure.
+                menu.addAction("%s: %s" % (key, value)).triggered.connect(
+                    get_action_fct())
+
+        popup.exec_(self.ui.references_push_button.parentWidget().mapToGlobal(
+                    self.ui.references_push_button.pos()))
+
     def on_select_file_button_released(self):
         """
         Fill the station tree widget upon opening a new file.
@@ -344,9 +385,11 @@ class Window(QtGui.QMainWindow):
             pass
         elif t == STATION_VIEW_ITEM_TYPES["STATIONXML"]:
             station = get_station(item)
+            self._state["current_station_object"] = self.ds.waveforms[station]
             self.ds.waveforms[station].StationXML.plot_response(0.001)
         elif t == STATION_VIEW_ITEM_TYPES["WAVEFORM"]:
             station = get_station(item)
+            self._state["current_station_object"] = self.ds.waveforms[station]
             self.st = self.ds.waveforms[station][item.text(0)].sort()
             self.update_waveform_plot()
         else:
