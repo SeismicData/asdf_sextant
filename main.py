@@ -23,6 +23,7 @@ import itertools
 import os
 import sys
 
+import obspy.core.event
 import pyasdf
 from pyasdf.exceptions import ASDFValueError
 
@@ -137,9 +138,9 @@ class Window(QtGui.QMainWindow):
                 [event.resource_id.id],
                 type=EVENT_VIEW_ITEM_TYPES["EVENT"])
 
-            origin_item = QtGui.QTreeWidgetItem(["Origins"])
-            magnitude_item = QtGui.QTreeWidgetItem(["Magnitudes"])
-            focmec_item = QtGui.QTreeWidgetItem(["Focal Mechanisms"])
+            origin_item = QtGui.QTreeWidgetItem(["Origins"], type=-1)
+            magnitude_item = QtGui.QTreeWidgetItem(["Magnitudes"], type=-1)
+            focmec_item = QtGui.QTreeWidgetItem(["Focal Mechanisms"], type=-1)
 
             org_items = []
             for origin in event.origins:
@@ -169,40 +170,6 @@ class Window(QtGui.QMainWindow):
             items.append(event_item)
 
         self.ui.event_tree_widget.insertTopLevelItems(0, items)
-        return
-
-            #from PyQt4.QtCore import pyqtRemoveInputHook
-            #pyqtRemoveInputHook()
-            #from IPython.core.debugger import Tracer; Tracer(colors="Linux")()
-
-        for key, group in itertools.groupby(
-                self.ds.waveforms,
-                key=lambda x: x._station_name.split(".")[0]):
-            network_item = QtGui.QTreeWidgetItem(
-                [key],
-                type=STATION_VIEW_ITEM_TYPES["NETWORK"])
-            group = sorted(group, key=lambda x: x._station_name)
-            for station in sorted(group, key=lambda x: x._station_name):
-                station_item = QtGui.QTreeWidgetItem([
-                    station._station_name.split(".")[-1]],
-                    type=STATION_VIEW_ITEM_TYPES["STATION"])
-
-                # Add children.
-                children = []
-                if "StationXML" in station.list():
-                    children.append(
-                        QtGui.QTreeWidgetItem(
-                            ["StationXML"],
-                            type=STATION_VIEW_ITEM_TYPES["STATIONXML"]))
-                for waveform in station.get_waveform_tags():
-                    children.append(
-                        QtGui.QTreeWidgetItem(
-                            [waveform],
-                            type=STATION_VIEW_ITEM_TYPES["WAVEFORM"]))
-                station_item.addChildren(children)
-
-                network_item.addChild(station_item)
-            items.append(network_item)
 
     def build_station_view_list(self):
         if not hasattr(self, "ds") or not self.ds:
@@ -513,6 +480,27 @@ class Window(QtGui.QMainWindow):
         else:
             pass
 
+    def on_event_tree_widget_itemClicked(self, item, column):
+        t = item.type()
+        if t not in EVENT_VIEW_ITEM_TYPES.values():
+            return
+
+        text = item.text(0)
+
+        res_id = obspy.core.event.ResourceIdentifier(id=text)
+
+        self.ui.events_text_browser.setPlainText(
+            str(res_id.getReferredObject()))
+
+        if t == EVENT_VIEW_ITEM_TYPES["EVENT"]:
+            print("Clicked event:", text)
+        elif t == EVENT_VIEW_ITEM_TYPES["ORIGIN"]:
+            print("Clicked origin:", text)
+        elif t == EVENT_VIEW_ITEM_TYPES["MAGNITUDE"]:
+            print("Clicked magnitude:", text)
+        elif t == EVENT_VIEW_ITEM_TYPES["FOCMEC"]:
+            print("Clicked focmec:", text)
+
     def on_auxiliary_data_tree_view_itemClicked(self, item, column):
         t = item.type()
         if t != AUX_DATA_ITEM_TYPES["TAG"]:
@@ -603,7 +591,6 @@ class Window(QtGui.QMainWindow):
         self.show_provenance_document(model_index.data())
 
     def on_station_view_itemEntered(self, item):
-
         t = item.type()
 
         def get_station(item, parent=True):

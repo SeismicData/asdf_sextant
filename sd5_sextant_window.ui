@@ -234,7 +234,14 @@
             <widget class="QWidget" name="auxiliary_data_file_page">
              <layout class="QHBoxLayout" name="horizontalLayout_9">
               <item>
-               <widget class="QTextBrowser" name="auxiliary_file_browser"/>
+               <widget class="QTextBrowser" name="auxiliary_file_browser">
+                <property name="font">
+                 <font>
+                  <family>Andale Mono</family>
+                  <pointsize>12</pointsize>
+                 </font>
+                </property>
+               </widget>
               </item>
              </layout>
             </widget>
@@ -354,7 +361,14 @@
            </widget>
           </item>
           <item>
-           <widget class="QTextBrowser" name="events_text_browser"/>
+           <widget class="QTextBrowser" name="events_text_browser">
+            <property name="font">
+             <font>
+              <family>Andale Mono</family>
+              <pointsize>12</pointsize>
+             </font>
+            </property>
+           </widget>
           </item>
          </layout>
         </item>
