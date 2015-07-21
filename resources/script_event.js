@@ -20,9 +20,12 @@ var passiveIcon = L.divIcon({
 var events = {};
 
 function addEvent(event_id, latitude, longitude) {
-    var marker = L.marker([latitude, longitude], {
-        icon: passiveIcon
-    }).addTo(map);
+    var marker = new L.CircleMarker(
+        L.latLng(latitude, longitude), {
+            radius: 10,
+            color: "#ff0000"
+    });
+    map.addLayer(marker);
 
 
     events[event_id] = {
@@ -31,14 +34,14 @@ function addEvent(event_id, latitude, longitude) {
         "longitude": longitude};
 
     marker.status = "--";
-    setMarkerInactive(marker);
+    setMarkerInactive({marker: marker});
 }
 
 
 function setMarkerActive(value) {
     if (value.marker.status != "active") {
         var pos = map.latLngToLayerPoint(value.marker.getLatLng()).round();
-        value.marker.setIcon(activeIcon);
+        value.marker.setStyle({color: "#DB3340"});
         value.marker.setZIndexOffset(101 - pos.y);
         value.marker.status = "active";
     }
@@ -48,7 +51,7 @@ function setMarkerActive(value) {
 function setMarkerInactive(value) {
     if (value.marker.status != "passive") {
         var pos = map.latLngToLayerPoint(value.marker.getLatLng()).round();
-        value.marker.setIcon(passiveIcon);
+        value.marker.setStyle({color: "#659872"});
         value.marker.setZIndexOffset(100 - pos.y);
         value.marker.status = "passive";
     }
@@ -63,6 +66,7 @@ function setAllInactive() {
 
 
 function highlightEvent(event_id) {
+    setAllInactive();
     var value = events[event_id];
     setMarkerActive(value)
 }

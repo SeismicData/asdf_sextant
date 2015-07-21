@@ -142,6 +142,16 @@ class Window(QtGui.QMainWindow):
         items = []
 
         for event in self.events:
+            if event.origins:
+                org = event.preferred_origin() or event.origins[0]
+
+                js_call = "addEvent('{event_id}', {latitude}, {longitude});"\
+                    .format(event_id=event.resource_id.id,
+                            latitude=org.latitude,
+                            longitude=org.longitude)
+                self.ui.events_web_view.page().mainFrame().evaluateJavaScript(
+                    js_call)
+
             event_item = QtGui.QTreeWidgetItem(
                 [event.resource_id.id],
                 type=EVENT_VIEW_ITEM_TYPES["EVENT"])
@@ -501,13 +511,15 @@ class Window(QtGui.QMainWindow):
             str(res_id.getReferredObject()))
 
         if t == EVENT_VIEW_ITEM_TYPES["EVENT"]:
-            print("Clicked event:", text)
+            event = text
         elif t == EVENT_VIEW_ITEM_TYPES["ORIGIN"]:
-            print("Clicked origin:", text)
+            event = item.parent().parent().text(0)
         elif t == EVENT_VIEW_ITEM_TYPES["MAGNITUDE"]:
-            print("Clicked magnitude:", text)
+            event = item.parent().parent().text(0)
         elif t == EVENT_VIEW_ITEM_TYPES["FOCMEC"]:
-            print("Clicked focmec:", text)
+            event = item.parent().parent().text(0)
+
+        print(event)
 
     def on_auxiliary_data_tree_view_itemClicked(self, item, column):
         t = item.type()
