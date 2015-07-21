@@ -519,7 +519,8 @@ class Window(QtGui.QMainWindow):
         elif t == EVENT_VIEW_ITEM_TYPES["FOCMEC"]:
             event = item.parent().parent().text(0)
 
-        print("EVENT:", event)
+        js_call = "highlightEvent('{event_id}');".format(event_id=event)
+        self.ui.events_web_view.page().mainFrame().evaluateJavaScript(js_call)
 
     def on_auxiliary_data_tree_view_itemClicked(self, item, column):
         t = item.type()
