@@ -140,6 +140,7 @@ class Window(QtGui.QMainWindow):
         self.ui.event_tree_widget.clear()
 
         items = []
+        self._state["quake_ids"] = {}
 
         for event in self.events:
             if event.origins:
@@ -155,6 +156,7 @@ class Window(QtGui.QMainWindow):
             event_item = QtGui.QTreeWidgetItem(
                 [event.resource_id.id],
                 type=EVENT_VIEW_ITEM_TYPES["EVENT"])
+            self._state["quake_ids"][event.resource_id.id] = event_item
 
             origin_item = QtGui.QTreeWidgetItem(["Origins"], type=-1)
             magnitude_item = QtGui.QTreeWidgetItem(["Magnitudes"], type=-1)
@@ -166,6 +168,7 @@ class Window(QtGui.QMainWindow):
                     QtGui.QTreeWidgetItem(
                         [origin.resource_id.id],
                         type=EVENT_VIEW_ITEM_TYPES["ORIGIN"]))
+                self._state["quake_ids"][origin.resource_id.id] = org_items[-1]
             origin_item.addChildren(org_items)
 
             mag_items = []
@@ -174,6 +177,8 @@ class Window(QtGui.QMainWindow):
                     QtGui.QTreeWidgetItem(
                         [magnitude.resource_id.id],
                         type=EVENT_VIEW_ITEM_TYPES["MAGNITUDE"]))
+                self._state["quake_ids"][magnitude.resource_id.id] = \
+                    mag_items[-1]
             magnitude_item.addChildren(mag_items)
 
             focmec_items = []
@@ -182,6 +187,8 @@ class Window(QtGui.QMainWindow):
                     QtGui.QTreeWidgetItem(
                         [focmec.resource_id.id],
                         type=EVENT_VIEW_ITEM_TYPES["FOCMEC"]))
+                self._state["quake_ids"][focmec.resource_id.id] = \
+                    focmec_items[-1]
             focmec_item.addChildren(focmec_items)
 
             event_item.addChildren([origin_item, magnitude_item, focmec_item])
@@ -275,7 +282,16 @@ class Window(QtGui.QMainWindow):
         if object_type.lower() == "provenance":
             self.show_provenance_for_id(object_id)
         else:
-            print(object_type, object_id)
+            self.show_event(attribute=object_type.lower(), object_id=object_id)
+
+    def show_event(self, attribute, object_id):
+        item = self._state["quake_ids"][object_id]
+        self.ui.event_tree_widget.collapseAll()
+        self.ui.event_tree_widget.setCurrentItem(item)
+
+        self.on_event_tree_widget_itemClicked(item, 0)
+
+        self.ui.central_tab.setCurrentWidget(self.ui.event_tab)
 
     def on_show_auxiliary_provenance_button_released(self):
         if "current_auxiliary_data_provenance_id" not in self._state or \
@@ -507,6 +523,9 @@ class Window(QtGui.QMainWindow):
 
         res_id = obspy.core.event.ResourceIdentifier(id=text)
 
+        obj = res_id.getReferredObject()
+        if obj is None:
+            self.events = self.ds.events
         self.ui.events_text_browser.setPlainText(
             str(res_id.getReferredObject()))
 
