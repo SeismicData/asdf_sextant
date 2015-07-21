@@ -115,6 +115,26 @@
           <item>
            <layout class="QHBoxLayout" name="horizontalLayout_2">
             <item>
+             <widget class="QPushButton" name="reset_view_push_button">
+              <property name="text">
+               <string>Reset View</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <spacer name="horizontalSpacer_3">
+              <property name="orientation">
+               <enum>Qt::Horizontal</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>40</width>
+                <height>20</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+            <item>
              <widget class="QCheckBox" name="detrend_and_demean_check_box">
               <property name="text">
                <string>Detrend and Demean</string>
@@ -167,7 +187,7 @@
        <attribute name="title">
         <string>Auxiliary Data</string>
        </attribute>
-       <layout class="QHBoxLayout" name="horizontalLayout_8" stretch="3,10">
+       <layout class="QHBoxLayout" name="horizontalLayout_10" stretch="3,10">
         <item>
          <widget class="QTreeWidget" name="auxiliary_data_tree_view">
           <attribute name="headerVisible">
@@ -181,21 +201,36 @@
          </widget>
         </item>
         <item>
-         <layout class="QVBoxLayout" name="verticalLayout_4" stretch="1,1">
+         <layout class="QVBoxLayout" name="verticalLayout_4">
           <item>
-           <widget class="GraphicsLayoutWidget" name="auxiliary_data_graph">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
-            <property name="mouseTracking">
-             <bool>false</bool>
-            </property>
-            <property name="toolTip">
-             <string/>
-            </property>
+           <widget class="QStackedWidget" name="auxiliary_data_stacked_widget">
+            <widget class="QWidget" name="auxiliary_data_graph_page">
+             <layout class="QHBoxLayout" name="horizontalLayout_8">
+              <item>
+               <widget class="GraphicsLayoutWidget" name="auxiliary_data_graph">
+                <property name="sizePolicy">
+                 <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                  <horstretch>0</horstretch>
+                  <verstretch>0</verstretch>
+                 </sizepolicy>
+                </property>
+                <property name="mouseTracking">
+                 <bool>false</bool>
+                </property>
+                <property name="toolTip">
+                 <string/>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </widget>
+            <widget class="QWidget" name="auxiliary_data_file_page">
+             <layout class="QHBoxLayout" name="horizontalLayout_9">
+              <item>
+               <widget class="QTextBrowser" name="auxiliary_file_browser"/>
+              </item>
+             </layout>
+            </widget>
            </widget>
           </item>
           <item>

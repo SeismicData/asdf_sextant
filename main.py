@@ -105,6 +105,8 @@ class Window(QtGui.QMainWindow):
         self.ui.web_view.settings().setAttribute(
             QtWebKit.QWebSettings.DeveloperExtrasEnabled, True)
 
+        self._state = {}
+
     def __connect_signal_and_slots(self):
         """
         Connect special signals and slots not covered by the named signals and
@@ -188,6 +190,9 @@ class Window(QtGui.QMainWindow):
                 items.append(item)
 
         self.ui.station_view.insertTopLevelItems(0, items)
+
+    def on_reset_view_push_button_released(self):
+        self.reset_view()
 
     def on_select_file_button_released(self):
         """
@@ -289,25 +294,45 @@ class Window(QtGui.QMainWindow):
 
         starttimes = []
         endtimes = []
+        min_values = []
+        max_values = []
 
-        all_plots = []
+        self._state["waveform_plots"] = []
         for _i, tr in enumerate(temp_st):
             plot = self.ui.graph.addPlot(
                 _i, 0, title=tr.id,
                 axisItems={'bottom': DateAxisItem(orientation='bottom',
                                                   utcOffset=0)})
             plot.show()
-            all_plots.append(plot)
+            self._state["waveform_plots"].append(plot)
             plot.plot(tr.times() + tr.stats.starttime.timestamp, tr.data)
             starttimes.append(tr.stats.starttime)
             endtimes.append(tr.stats.endtime)
+            min_values.append(tr.data.min())
+            max_values.append(tr.data.max())
 
-        for plot in all_plots[1:]:
-            plot.setXLink(all_plots[0])
-            plot.setYLink(all_plots[0])
+        self._state["waveform_plots_min_time"] = min(starttimes)
+        self._state["waveform_plots_max_time"] = max(endtimes)
+        self._state["waveform_plots_min_value"] = min(min_values)
+        self._state["waveform_plots_max_value"] = max(max_values)
 
-        all_plots[0].setXRange(min(starttimes).timestamp,
-                               max(endtimes).timestamp)
+        for plot in self._state["waveform_plots"][1:]:
+            plot.setXLink(self._state["waveform_plots"][0])
+            plot.setYLink(self._state["waveform_plots"][0])
+
+        self.reset_view()
+
+    def reset_view(self):
+        self._state["waveform_plots"][0].setXRange(
+            self._state["waveform_plots_min_time"].timestamp,
+            self._state["waveform_plots_max_time"].timestamp)
+        min_v = self._state["waveform_plots_min_value"]
+        max_v = self._state["waveform_plots_max_value"]
+
+        y_range = max_v - min_v
+        min_v -= 0.1 * y_range
+        max_v += 0.1 * y_range
+        self._state["waveform_plots"][0].setYRange(min_v, max_v)
 
     def show_provenance_document(self, document_name):
         tmp_svg = "temp.svg"
@@ -355,16 +380,28 @@ class Window(QtGui.QMainWindow):
 
         aux_data = getattr(getattr(self.ds.auxiliary_data, data_type), tag)
 
-        if len(aux_data.data.shape) == 1:
+        if len(aux_data.data.shape) == 1 and data_type != "File":
             plot = graph.addPlot(title="%s - %s" % (data_type, tag))
             plot.show()
             plot.plot(aux_data.data.value)
+            self.ui.auxiliary_data_stacked_widget.setCurrentWidget(
+                self.ui.auxiliary_data_graph_page)
+        # Files are a bit special.
+        elif len(aux_data.data.shape) == 1 and data_type == "File":
+            self.ui.auxiliary_file_browser.setPlainText(
+                aux_data.file.read().decode())
+            self.ui.auxiliary_data_stacked_widget.setCurrentWidget(
+                self.ui.auxiliary_data_file_page)
+        # 2D Shapes.
         elif len(aux_data.data.shape) == 2:
             img = pg.ImageItem(border="#3D8EC9")
             img.setImage(aux_data.data.value)
             vb = graph.addViewBox()
             vb.setAspectLocked(True)
             vb.addItem(img)
+            self.ui.auxiliary_data_stacked_widget.setCurrentWidget(
+                self.ui.auxiliary_data_graph_page)
+        # Anything else is currently not supported.
         else:
             raise NotImplementedError
 
