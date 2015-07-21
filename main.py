@@ -36,6 +36,12 @@ STATION_VIEW_ITEM_TYPES = {
     "STATIONXML": 2,
     "WAVEFORM": 3}
 
+EVENT_VIEW_ITEM_TYPES = {
+    "EVENT": 0,
+    "ORIGIN": 1,
+    "MAGNITUDE": 2,
+    "FOCMEC": 3}
+
 AUX_DATA_ITEM_TYPES = {
     "DATA_TYPE": 0,
     "TAG": 1}
@@ -117,6 +123,86 @@ class Window(QtGui.QMainWindow):
             self.on_station_view_itemEntered)
         self.ui.station_view.itemExited.connect(
             self.on_station_view_itemExited)
+
+    def build_event_tree_view(self):
+        if not hasattr(self, "ds") or not self.ds:
+            return
+        self.events = self.ds.events
+        self.ui.event_tree_widget.clear()
+
+        items = []
+
+        for event in self.events:
+            event_item = QtGui.QTreeWidgetItem(
+                [event.resource_id.id],
+                type=EVENT_VIEW_ITEM_TYPES["EVENT"])
+
+            origin_item = QtGui.QTreeWidgetItem(["Origins"])
+            magnitude_item = QtGui.QTreeWidgetItem(["Magnitudes"])
+            focmec_item = QtGui.QTreeWidgetItem(["Focal Mechanisms"])
+
+            org_items = []
+            for origin in event.origins:
+                org_items.append(
+                    QtGui.QTreeWidgetItem(
+                        [origin.resource_id.id],
+                        type=EVENT_VIEW_ITEM_TYPES["ORIGIN"]))
+            origin_item.addChildren(org_items)
+
+            mag_items = []
+            for magnitude in event.magnitudes:
+                mag_items.append(
+                    QtGui.QTreeWidgetItem(
+                        [magnitude.resource_id.id],
+                        type=EVENT_VIEW_ITEM_TYPES["MAGNITUDE"]))
+            magnitude_item.addChildren(mag_items)
+
+            focmec_items = []
+            for focmec in event.focal_mechanisms:
+                focmec_items.append(
+                    QtGui.QTreeWidgetItem(
+                        [focmec.resource_id.id],
+                        type=EVENT_VIEW_ITEM_TYPES["FOCMEC"]))
+            focmec_item.addChildren(focmec_items)
+
+            event_item.addChildren([origin_item, magnitude_item, focmec_item])
+            items.append(event_item)
+
+        self.ui.event_tree_widget.insertTopLevelItems(0, items)
+        return
+
+            #from PyQt4.QtCore import pyqtRemoveInputHook
+            #pyqtRemoveInputHook()
+            #from IPython.core.debugger import Tracer; Tracer(colors="Linux")()
+
+        for key, group in itertools.groupby(
+                self.ds.waveforms,
+                key=lambda x: x._station_name.split(".")[0]):
+            network_item = QtGui.QTreeWidgetItem(
+                [key],
+                type=STATION_VIEW_ITEM_TYPES["NETWORK"])
+            group = sorted(group, key=lambda x: x._station_name)
+            for station in sorted(group, key=lambda x: x._station_name):
+                station_item = QtGui.QTreeWidgetItem([
+                    station._station_name.split(".")[-1]],
+                    type=STATION_VIEW_ITEM_TYPES["STATION"])
+
+                # Add children.
+                children = []
+                if "StationXML" in station.list():
+                    children.append(
+                        QtGui.QTreeWidgetItem(
+                            ["StationXML"],
+                            type=STATION_VIEW_ITEM_TYPES["STATIONXML"]))
+                for waveform in station.get_waveform_tags():
+                    children.append(
+                        QtGui.QTreeWidgetItem(
+                            [waveform],
+                            type=STATION_VIEW_ITEM_TYPES["WAVEFORM"]))
+                station_item.addChildren(children)
+
+                network_item.addChild(station_item)
+            items.append(network_item)
 
     def build_station_view_list(self):
         if not hasattr(self, "ds") or not self.ds:
@@ -277,6 +363,7 @@ class Window(QtGui.QMainWindow):
                                longitude=coordinates["longitude"]))
 
         self.build_station_view_list()
+        self.build_event_tree_view()
 
         # Add all the provenance items
         self.provenance_list_model.clear()

@@ -325,6 +325,41 @@
         </item>
        </layout>
       </widget>
+      <widget class="QWidget" name="event_tab">
+       <attribute name="title">
+        <string>Events</string>
+       </attribute>
+       <layout class="QHBoxLayout" name="horizontalLayout_12" stretch="4,6">
+        <item>
+         <widget class="QTreeWidget" name="event_tree_widget">
+          <attribute name="headerVisible">
+           <bool>false</bool>
+          </attribute>
+          <column>
+           <property name="text">
+            <string notr="true">1</string>
+           </property>
+          </column>
+         </widget>
+        </item>
+        <item>
+         <layout class="QVBoxLayout" name="verticalLayout_5" stretch="1,1">
+          <item>
+           <widget class="QWebView" name="events_web_view">
+            <property name="url">
+             <url>
+              <string>about:blank</string>
+             </url>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QTextBrowser" name="events_text_browser"/>
+          </item>
+         </layout>
+        </item>
+       </layout>
+      </widget>
      </widget>
     </item>
    </layout>
