@@ -137,20 +137,14 @@ class Window(QtGui.QMainWindow):
                         station._station_name.split(".")[-1]],
                         type=STATION_VIEW_ITEM_TYPES["STATION"])
 
-                    contents = dir(station)
-                    waveform_contents = sorted([
-                        _i for _i in contents
-                        if _i not in ("StationXML", "_station_name",
-                                      "coordinates", "channel_coordinates")])
-
                     # Add children.
                     children = []
-                    if "StationXML" in contents:
+                    if "StationXML" in station.list():
                         children.append(
                             QtGui.QTreeWidgetItem(
                                 ["StationXML"],
                                 type=STATION_VIEW_ITEM_TYPES["STATIONXML"]))
-                    for waveform in waveform_contents:
+                    for waveform in station.get_waveform_tags():
                         children.append(
                             QtGui.QTreeWidgetItem(
                                 [waveform],
@@ -167,20 +161,14 @@ class Window(QtGui.QMainWindow):
                     [station._station_name],
                     type=STATION_VIEW_ITEM_TYPES["STATION"])
 
-                contents = dir(station)
-                waveform_contents = sorted([
-                    _i for _i in contents
-                    if _i not in ("StationXML", "_station_name", "coordinates",
-                                  "channel_coordinates")])
-
                 # Add children.
                 children = []
-                if "StationXML" in contents:
+                if "StationXML" in station.list():
                     children.append(
                         QtGui.QTreeWidgetItem(
                             ["StationXML"],
                             type=STATION_VIEW_ITEM_TYPES["STATIONXML"]))
-                for waveform in waveform_contents:
+                for waveform in station.get_waveform_tags():
                     children.append(
                         QtGui.QTreeWidgetItem(
                             [waveform],
@@ -356,13 +344,10 @@ class Window(QtGui.QMainWindow):
             pass
         elif t == STATION_VIEW_ITEM_TYPES["STATIONXML"]:
             station = get_station(item)
-            getattr(getattr(self.ds.waveforms, station.replace(".", "_")),
-                    "StationXML").plot_response(0.001)
+            self.ds.waveforms[station].StationXML.plot_response(0.001)
         elif t == STATION_VIEW_ITEM_TYPES["WAVEFORM"]:
             station = get_station(item)
-            self.st = getattr(getattr(
-                self.ds.waveforms, station.replace(".", "_")),
-                item.text(0)).sort()
+            self.st = self.ds.waveforms[station][item.text(0)].sort()
             self.update_waveform_plot()
         else:
             pass
