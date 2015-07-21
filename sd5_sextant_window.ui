@@ -60,11 +60,11 @@
      </layout>
     </item>
     <item>
-     <widget class="QTabWidget" name="tabWidget">
+     <widget class="QTabWidget" name="central_tab">
       <property name="currentIndex">
        <number>0</number>
       </property>
-      <widget class="QWidget" name="tab">
+      <widget class="QWidget" name="waveform_tab">
        <attribute name="title">
         <string notr="true">Waveforms</string>
        </attribute>
@@ -190,11 +190,11 @@
         </item>
        </layout>
       </widget>
-      <widget class="QWidget" name="tab_2">
+      <widget class="QWidget" name="auxiliary_data_tab">
        <attribute name="title">
         <string>Auxiliary Data</string>
        </attribute>
-       <layout class="QHBoxLayout" name="horizontalLayout_10" stretch="3,10">
+       <layout class="QHBoxLayout" name="horizontalLayout_11" stretch="3,10">
         <item>
          <widget class="QTreeWidget" name="auxiliary_data_tree_view">
           <attribute name="headerVisible">
@@ -241,6 +241,42 @@
            </widget>
           </item>
           <item>
+           <layout class="QHBoxLayout" name="horizontalLayout_10">
+            <item>
+             <widget class="QPushButton" name="show_auxiliary_provenance_button">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+              <property name="text">
+               <string>Show Provenance</string>
+              </property>
+              <property name="autoDefault">
+               <bool>false</bool>
+              </property>
+              <property name="default">
+               <bool>false</bool>
+              </property>
+              <property name="flat">
+               <bool>false</bool>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <spacer name="horizontalSpacer_4">
+              <property name="orientation">
+               <enum>Qt::Horizontal</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>40</width>
+                <height>20</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+           </layout>
+          </item>
+          <item>
            <layout class="QHBoxLayout" name="horizontalLayout_7">
             <item>
              <widget class="QGroupBox" name="groupBox">
@@ -276,7 +312,7 @@
         </item>
        </layout>
       </widget>
-      <widget class="QWidget" name="tab_3">
+      <widget class="QWidget" name="provenance_tab">
        <attribute name="title">
         <string>Provenance</string>
        </attribute>

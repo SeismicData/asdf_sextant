@@ -24,6 +24,7 @@ import os
 import sys
 
 import pyasdf
+from pyasdf.exceptions import ASDFValueError
 
 from DateAxisItem import DateAxisItem
 
@@ -182,8 +183,32 @@ class Window(QtGui.QMainWindow):
     def on_reset_view_push_button_released(self):
         self.reset_view()
 
+    def show_provenance_for_id(self, prov_id):
+        try:
+            info = \
+                self.ds.provenance.get_provenance_document_for_id(prov_id)
+        except ASDFValueError as e:
+            msg_box = QtGui.QMessageBox()
+            msg_box.setText(e.args[0])
+            msg_box.exec_()
+            return
+
+        # Find the item.
+        item = self.provenance_list_model.findItems(info["name"])[0]
+        index = self.provenance_list_model.indexFromItem(item)
+        self.ui.provenance_list_view.setCurrentIndex(index)
+        self.show_provenance_document(info["name"])
+        self.ui.central_tab.setCurrentWidget(self.ui.provenance_tab)
+
     def show_referenced_object(self, object_type, object_id):
         print(object_type, object_id)
+
+    def on_show_auxiliary_provenance_button_released(self):
+        if "current_auxiliary_data_provenance_id" not in self._state or \
+                not self._state["current_auxiliary_data_provenance_id"]:
+            return
+        self.show_provenance_for_id(
+            self._state["current_auxiliary_data_provenance_id"])
 
     def on_references_push_button_released(self):
         if "current_station_object" not in self._state:
@@ -436,6 +461,13 @@ class Window(QtGui.QMainWindow):
         # Show the parameters.
         tv = self.ui.auxiliary_data_detail_table_view
         tv.clear()
+
+        self._state["current_auxiliary_data_provenance_id"] = \
+            aux_data.provenance_id
+        if aux_data.provenance_id:
+            self.ui.show_auxiliary_provenance_button.setEnabled(True)
+        else:
+            self.ui.show_auxiliary_provenance_button.setEnabled(False)
 
         tv.setRowCount(len(aux_data.parameters))
         tv.setColumnCount(2)
