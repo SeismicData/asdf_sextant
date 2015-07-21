@@ -201,7 +201,10 @@ class Window(QtGui.QMainWindow):
         self.ui.central_tab.setCurrentWidget(self.ui.provenance_tab)
 
     def show_referenced_object(self, object_type, object_id):
-        print(object_type, object_id)
+        if object_type.lower() == "provenance":
+            self.show_provenance_for_id(object_id)
+        else:
+            print(object_type, object_id)
 
     def on_show_auxiliary_provenance_button_released(self):
         if "current_auxiliary_data_provenance_id" not in self._state or \
