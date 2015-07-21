@@ -220,20 +220,20 @@ class Window(QtGui.QMainWindow):
 
         # Add all the provenance items
         self.provenance_list_model.clear()
-        for provenance in dir(self.ds.provenance):
+        for provenance in self.ds.provenance.list():
             item = QtGui.QStandardItem(provenance)
             self.provenance_list_model.appendRow(item)
 
         # Also add the auxiliary data.
         items = []
-        for data_type in sorted(dir(self.ds.auxiliary_data)):
+        for data_type in self.ds.auxiliary_data.list():
             data_type_item = QtGui.QTreeWidgetItem(
                 [data_type],
                 type=AUX_DATA_ITEM_TYPES["DATA_TYPE"])
 
             children = []
-            data = getattr(self.ds.auxiliary_data, data_type)
-            for tag in sorted(dir(data)):
+            data = self.ds.auxiliary_data[data_type]
+            for tag in data.list():
                 children.append(
                     QtGui.QTreeWidgetItem(
                         [tag],
@@ -336,7 +336,7 @@ class Window(QtGui.QMainWindow):
 
     def show_provenance_document(self, document_name):
         tmp_svg = "temp.svg"
-        doc = getattr(self.ds.provenance, document_name)
+        doc = self.ds.provenance[document_name]
         doc.plot(filename=tmp_svg, use_labels=True)
 
         self.ui.provenance_graphics_view.open_file(tmp_svg)
@@ -378,7 +378,7 @@ class Window(QtGui.QMainWindow):
         graph = self.ui.auxiliary_data_graph
         graph.clear()
 
-        aux_data = getattr(getattr(self.ds.auxiliary_data, data_type), tag)
+        aux_data = self.ds.auxiliary_data[data_type][tag]
 
         if len(aux_data.data.shape) == 1 and data_type != "File":
             plot = graph.addPlot(title="%s - %s" % (data_type, tag))
