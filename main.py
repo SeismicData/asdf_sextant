@@ -22,6 +22,7 @@ import inspect
 import itertools
 import os
 import sys
+import tempfile
 
 import obspy.core.event
 import pyasdf
@@ -122,6 +123,19 @@ class Window(QtGui.QMainWindow):
             QtWebKit.QWebSettings.DeveloperExtrasEnabled, True)
 
         self._state = {}
+
+        tmp = tempfile.mkstemp("sd5_sextant")
+        os.close(tmp[0])
+        try:
+            os.remove(tmp[1])
+        except:
+            pass
+        self._tempfile = tmp[1] + ".svg"
+
+    def __del__(self):
+        try:
+            os.remove(self._tempfile)
+        except:pass
 
     def __connect_signal_and_slots(self):
         """
@@ -484,11 +498,10 @@ class Window(QtGui.QMainWindow):
         self._state["waveform_plots"][0].setYRange(min_v, max_v)
 
     def show_provenance_document(self, document_name):
-        tmp_svg = "temp.svg"
         doc = self.ds.provenance[document_name]
-        doc.plot(filename=tmp_svg, use_labels=True)
+        doc.plot(filename=self._tempfile, use_labels=True)
 
-        self.ui.provenance_graphics_view.open_file(tmp_svg)
+        self.ui.provenance_graphics_view.open_file(self._tempfile)
 
     def on_station_view_itemClicked(self, item, column):
         t = item.type()
@@ -692,7 +705,9 @@ def launch():
     window.show()
     app.installEventFilter(window)
     window.raise_()
-    os._exit(app.exec_())
+    ret_val = app.exec_()
+    window.__del__()
+    os._exit(ret_val)
 
 
 if __name__ == "__main__":
