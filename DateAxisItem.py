@@ -19,6 +19,7 @@ WEEK_SPACING = 7 * DAY_SPACING
 MONTH_SPACING = 30 * DAY_SPACING
 YEAR_SPACING = 365 * DAY_SPACING
 
+
 def makeMSStepper(stepSize):
     def stepper(val, n):
         val *= 1000
@@ -26,10 +27,12 @@ def makeMSStepper(stepSize):
         return (val // (n*f) + 1) * (n*f) / 1000.0
     return stepper
 
+
 def makeSStepper(stepSize):
     def stepper(val, n):
         return (val // (n*stepSize) + 1) * (n*stepSize)
     return stepper
+
 
 def makeMStepper(stepSize):
     def stepper(val, n):
@@ -38,6 +41,7 @@ def makeMStepper(stepSize):
         d = datetime(d.year + base0m // 12, base0m % 12 + 1, 1)
         return (d - datetime(1970, 1, 1)).total_seconds()
     return stepper
+
 
 def makeYStepper(stepSize):
     def stepper(val, n):
@@ -52,7 +56,7 @@ class TickSpec:
     within a given utc timestamp range """
     def __init__(self, spacing, stepper, format, autoSkip=None):
         """
-        ============= ==========================================================
+        ============= =========================================================
         Arguments
         spacing       approximate (average) tick spacing
         stepper       a stepper function that takes a utc time stamp and a step
@@ -63,9 +67,9 @@ class TickSpec:
                       convert tick locations to date/time strings
         autoSkip      list of step size multipliers to be applied when the tick
                       density becomes too high. The tick spec automatically
-                      applies additional powers of 10 (10, 100, ...) to the list
-                      if necessary. Set to None to switch autoSkip off
-        ============= ==========================================================
+                      applies additional powers of 10 (10, 100, ...) to the
+                      list if necessary. Set to None to switch autoSkip off
+        ============= =========================================================
 
         """
         self.spacing = spacing
@@ -98,10 +102,10 @@ class ZoomLevel:
     """ Generates the ticks which appear in a specific zoom level """
     def __init__(self, tickSpecs):
         """
-        ============= ==========================================================
+        ============= =========================================================
         tickSpecs     a list of one or more TickSpec objects with decreasing
                       coarseness
-        ============= ==========================================================
+        ============= =========================================================
 
         """
         self.tickSpecs = tickSpecs
@@ -109,10 +113,11 @@ class ZoomLevel:
 
     def tickValues(self, minVal, maxVal, minSpc):
         # return tick values for this format in the range minVal, maxVal
-        # the return value is a list of tuples (<avg spacing>, [tick positions])
-        # minSpc indicates the minimum spacing (in seconds) between two ticks
-        # to fullfill the maxTicksPerPt constraint of the DateAxisItem at the
-        # current zoom level. This is used for auto skipping ticks.
+        # the return value is a list of tuples (<avg spacing>,
+        # [tick positions]) minSpc indicates the minimum spacing (in seconds)
+        # between two ticks to fullfill the maxTicksPerPt constraint of the
+        # DateAxisItem at the current zoom level. This is used for auto
+        # skipping ticks.
         allTicks = []
         valueSpecs = []
         # back-project (minVal maxVal) to UTC, compute ticks then offset to
@@ -144,7 +149,8 @@ MONTH_DAY_ZOOM_LEVEL = ZoomLevel([
 ])
 DAY_HOUR_ZOOM_LEVEL = ZoomLevel([
     TickSpec(DAY_SPACING, makeSStepper(DAY_SPACING), '%a %d'),
-    TickSpec(HOUR_SPACING, makeSStepper(HOUR_SPACING), '%H:%M', autoSkip=[1, 6])
+    TickSpec(HOUR_SPACING, makeSStepper(HOUR_SPACING), '%H:%M',
+             autoSkip=[1, 6])
 ])
 HOUR_MINUTE_ZOOM_LEVEL = ZoomLevel([
     TickSpec(DAY_SPACING, makeSStepper(DAY_SPACING), '%a %d'),
@@ -167,9 +173,9 @@ class DateAxisItem(AxisItem):
 
     The display format is adjusted automatically depending on the current time
     density (seconds/point) on the axis.
-    You can customize the behaviour by specifying a different set of zoom levels
-    than the default one. The zoomLevels variable is a dictionary with the
-    maximum number of seconds/point which are allowed for each ZoomLevel
+    You can customize the behaviour by specifying a different set of zoom
+    levels than the default one. The zoomLevels variable is a dictionary with
+    the maximum number of seconds/point which are allowed for each ZoomLevel
     before the axis switches to the next coarser level.
 
     """

@@ -135,7 +135,8 @@ class Window(QtGui.QMainWindow):
     def __del__(self):
         try:
             os.remove(self._tempfile)
-        except:pass
+        except:
+            pass
 
     def __connect_signal_and_slots(self):
         """
@@ -429,11 +430,6 @@ class Window(QtGui.QMainWindow):
         self.build_station_view_list()
 
     def update_waveform_plot(self):
-
-        #from PyQt4.QtCore import pyqtRemoveInputHook
-        #pyqtRemoveInputHook()
-        #from IPython.core.debugger import Tracer; Tracer(colors="Linux")()
-
         # Get the filter settings.
         filter_settings = {}
         filter_settings["detrend_and_demean"] = \
@@ -450,10 +446,6 @@ class Window(QtGui.QMainWindow):
             temp_st.normalize()
 
         self.ui.graph.clear()
-
-        #from PyQt4.QtCore import pyqtRemoveInputHook
-        #pyqtRemoveInputHook()
-        #from IPython.core.debugger import Tracer; Tracer(colors="Linux")()
 
         starttimes = []
         endtimes = []
