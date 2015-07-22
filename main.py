@@ -520,7 +520,7 @@ class Window(QtGui.QMainWindow):
         if t not in EVENT_VIEW_ITEM_TYPES.values():
             return
 
-        text = item.text(0)
+        text = str(item.text(0))
 
         res_id = obspy.core.event.ResourceIdentifier(id=text)
 
@@ -533,11 +533,11 @@ class Window(QtGui.QMainWindow):
         if t == EVENT_VIEW_ITEM_TYPES["EVENT"]:
             event = text
         elif t == EVENT_VIEW_ITEM_TYPES["ORIGIN"]:
-            event = item.parent().parent().text(0)
+            event = str(item.parent().parent().text(0))
         elif t == EVENT_VIEW_ITEM_TYPES["MAGNITUDE"]:
-            event = item.parent().parent().text(0)
+            event = str(item.parent().parent().text(0))
         elif t == EVENT_VIEW_ITEM_TYPES["FOCMEC"]:
-            event = item.parent().parent().text(0)
+            event = str(item.parent().parent().text(0))
 
         js_call = "highlightEvent('{event_id}');".format(event_id=event)
         self.ui.events_web_view.page().mainFrame().evaluateJavaScript(js_call)
@@ -547,8 +547,8 @@ class Window(QtGui.QMainWindow):
         if t != AUX_DATA_ITEM_TYPES["TAG"]:
             return
 
-        tag = item.text(0)
-        data_type = item.parent().text(0)
+        tag = str(item.text(0))
+        data_type = str(item.parent().text(0))
 
         graph = self.ui.auxiliary_data_graph
         graph.clear()
@@ -642,7 +642,7 @@ class Window(QtGui.QMainWindow):
 
         def get_station(item, parent=True):
             if parent:
-                station = item.parent().text(0)
+                station = str(item.parent().text(0))
                 if "." not in station:
                     station = item.parent().parent().text(0) + "." + station
             else:
