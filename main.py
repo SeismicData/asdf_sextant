@@ -629,7 +629,13 @@ class Window(QtGui.QMainWindow):
             tv.setItem(_i, 1, value_item)
 
     def on_provenance_list_view_clicked(self, model_index):
-        self.show_provenance_document(model_index.data())
+        # Compat for different pyqt/sip versions.
+        try:
+            data = str(model_index.data().toString())
+        except:
+            data = str(model_index.data())
+
+        self.show_provenance_document(data)
 
     def on_station_view_itemEntered(self, item):
         t = item.type()
