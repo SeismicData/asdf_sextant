@@ -1,5 +1,8 @@
 import sip
-sip.setapi('QString', 2)
+try:
+    sip.setapi('QString', 2)
+except:
+    pass
 
 from PyQt4 import QtGui, QtSvg, QtCore  # NOQA
 
