@@ -116,6 +116,9 @@
            <layout class="QHBoxLayout" name="horizontalLayout_2">
             <item>
              <widget class="QPushButton" name="reset_view_push_button">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
               <property name="text">
                <string>Reset View</string>
               </property>

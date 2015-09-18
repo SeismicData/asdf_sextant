@@ -432,6 +432,8 @@ class Window(QtGui.QMainWindow):
         self.build_station_view_list()
 
     def update_waveform_plot(self):
+        self.ui.reset_view_push_button.setEnabled(True)
+
         # Get the filter settings.
         filter_settings = {}
         filter_settings["detrend_and_demean"] = \
