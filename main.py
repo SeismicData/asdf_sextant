@@ -109,14 +109,16 @@ class Window(QtGui.QMainWindow):
         self.ui.provenance_list_view.setModel(self.provenance_list_model)
 
         # Station view.
-        map_file = os.path.abspath("resources/index.html")
+        map_file = os.path.abspath(os.path.join(
+            os.path.dirname(__file__), "resources/index.html"))
         self.ui.web_view.load(QtCore.QUrl.fromLocalFile(map_file))
         # Enable debugging of the web view.
         self.ui.web_view.settings().setAttribute(
             QtWebKit.QWebSettings.DeveloperExtrasEnabled, True)
 
         # Event view.
-        map_file = os.path.abspath("resources/index_event.html")
+        map_file = os.path.abspath(os.path.join(
+            os.path.dirname(__file__), "resources/index_event.html"))
         self.ui.events_web_view.load(QtCore.QUrl.fromLocalFile(map_file))
         # Enable debugging of the web view.
         self.ui.events_web_view.settings().setAttribute(
