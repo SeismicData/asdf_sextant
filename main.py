@@ -46,7 +46,7 @@ EVENT_VIEW_ITEM_TYPES = {
 
 AUX_DATA_ITEM_TYPES = {
     "DATA_TYPE": 0,
-    "TAG": 1}
+    "DATA_ITEM": 1}
 
 
 # Default to antialiased drawing.
@@ -391,22 +391,28 @@ class Window(QtGui.QMainWindow):
             self.provenance_list_model.appendRow(item)
 
         # Also add the auxiliary data.
+
+        def recursive_tree(name, item):
+            if isinstance(item, pyasdf.utils.AuxiliaryDataAccessor):
+                data_type_item = QtGui.QTreeWidgetItem(
+                    [name],
+                    type=AUX_DATA_ITEM_TYPES["DATA_TYPE"])
+                children = []
+                for sub_item in item.list():
+                    children.append(recursive_tree(sub_item, item[sub_item]))
+                data_type_item.addChildren(children)
+            elif isinstance(item, pyasdf.utils.AuxiliaryDataContainer):
+                data_type_item = QtGui.QTreeWidgetItem(
+                    [name],
+                    type=AUX_DATA_ITEM_TYPES["DATA_ITEM"])
+            else:
+                raise NotImplementedError
+            return data_type_item
+
         items = []
         for data_type in self.ds.auxiliary_data.list():
-            data_type_item = QtGui.QTreeWidgetItem(
-                [data_type],
-                type=AUX_DATA_ITEM_TYPES["DATA_TYPE"])
-
-            children = []
-            data = self.ds.auxiliary_data[data_type]
-            for tag in data.list():
-                children.append(
-                    QtGui.QTreeWidgetItem(
-                        [tag],
-                        type=AUX_DATA_ITEM_TYPES["TAG"]))
-            data_type_item.addChildren(children)
-            items.append(data_type_item)
-
+            items.append(recursive_tree(data_type,
+                                        self.ds.auxiliary_data[data_type]))
         self.ui.auxiliary_data_tree_view.insertTopLevelItems(0, items)
 
         sb = self.ui.status_bar
@@ -553,25 +559,37 @@ class Window(QtGui.QMainWindow):
 
     def on_auxiliary_data_tree_view_itemClicked(self, item, column):
         t = item.type()
-        if t != AUX_DATA_ITEM_TYPES["TAG"]:
+        if t != AUX_DATA_ITEM_TYPES["DATA_ITEM"]:
             return
 
         tag = str(item.text(0))
-        data_type = str(item.parent().text(0))
+
+        def recursive_path(item):
+            p = item.parent()
+            if p is None:
+                return []
+            path = [str(p.text(0))]
+            path.extend(recursive_path(p))
+            return path
+
+        # Find the full path.
+        path = recursive_path(item)
+        path.reverse()
 
         graph = self.ui.auxiliary_data_graph
         graph.clear()
 
-        aux_data = self.ds.auxiliary_data[data_type][tag]
+        group = self.ds.auxiliary_data["/".join(path)]
+        aux_data = group[tag]
 
-        if len(aux_data.data.shape) == 1 and data_type != "File":
-            plot = graph.addPlot(title="%s - %s" % (data_type, tag))
+        if len(aux_data.data.shape) == 1 and path[0] != "File":
+            plot = graph.addPlot(title="%s/%s" % ("/".join(path), tag))
             plot.show()
             plot.plot(aux_data.data.value)
             self.ui.auxiliary_data_stacked_widget.setCurrentWidget(
                 self.ui.auxiliary_data_graph_page)
         # Files are a bit special.
-        elif len(aux_data.data.shape) == 1 and data_type == "File":
+        elif len(aux_data.data.shape) == 1 and path[0] == "File":
             self.ui.auxiliary_file_browser.setPlainText(
                 aux_data.file.read().decode())
             self.ui.auxiliary_data_stacked_widget.setCurrentWidget(
