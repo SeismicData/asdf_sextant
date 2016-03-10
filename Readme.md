@@ -66,7 +66,7 @@ Alternatively you can just install pyqtgraph from the latest Github master.
 It has no installer as of now - just clone it with git.
 
 ```bash
-$ git clone https://github.com/SeismicData/sd5_sextant.git
+$ git clone https://github.com/SeismicData/asdf_sextant.git
 $ cd sd5_sextant
 ```
 
