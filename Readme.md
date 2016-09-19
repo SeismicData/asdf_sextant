@@ -1,4 +1,4 @@
-# SD5 Sextant
+# ASDF Sextant
 
 This is an experimental graphical user interface intended to enable the interactive exploration of ASDF files. It can mostly deal with earthquake event data sets and is currently not really suited to explore large noise data sets but we will add this capability in the near future.
 
@@ -6,7 +6,7 @@ This is an experimental graphical user interface intended to enable the interact
 ![Imgur](http://i.imgur.com/Zk97r3K.png)
 ![Imgur](http://i.imgur.com/BRvdjoL.png)
 
-## Installation 
+## Installation
 
 ### Dependencies
 
@@ -67,7 +67,7 @@ It has no installer as of now - just clone it with git.
 
 ```bash
 $ git clone https://github.com/SeismicData/asdf_sextant.git
-$ cd sd5_sextant
+$ cd asdf_sextant
 ```
 
 ## Usage

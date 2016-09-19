@@ -101,7 +101,7 @@ class Window(QtGui.QMainWindow):
     def __init__(self):
         QtGui.QMainWindow.__init__(self)
         # Injected by the compile_and_import_ui_files() function.
-        self.ui = sd5_sextant_window.Ui_MainWindow()  # NOQA
+        self.ui = asdf_sextant_window.Ui_MainWindow()  # NOQA
         self.ui.setupUi(self)
 
         self.provenance_list_model = QtGui.QStandardItemModel(
@@ -126,7 +126,7 @@ class Window(QtGui.QMainWindow):
 
         self._state = {}
 
-        tmp = tempfile.mkstemp("sd5_sextant")
+        tmp = tempfile.mkstemp("asdf_sextant")
         os.close(tmp[0])
         try:
             os.remove(tmp[1])
@@ -366,7 +366,7 @@ class Window(QtGui.QMainWindow):
         self.filename = str(QtGui.QFileDialog.getOpenFileName(
             parent=self, caption="Choose File",
             directory=os.path.expanduser("~"),
-            filter="SD5 files (*.h5 *.sd5)"))
+            filter="ASDF files (*.h5)"))
         if not self.filename:
             return
 
