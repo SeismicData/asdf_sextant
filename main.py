@@ -539,11 +539,11 @@ class Window(QtGui.QMainWindow):
 
         res_id = obspy.core.event.ResourceIdentifier(id=text)
 
-        obj = res_id.getReferredObject()
+        obj = res_id.get_referred_object()
         if obj is None:
             self.events = self.ds.events
         self.ui.events_text_browser.setPlainText(
-            str(res_id.getReferredObject()))
+            str(res_id._referred_object()))
 
         if t == EVENT_VIEW_ITEM_TYPES["EVENT"]:
             event = text
