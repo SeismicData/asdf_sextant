@@ -543,7 +543,7 @@ class Window(QtGui.QMainWindow):
         if obj is None:
             self.events = self.ds.events
         self.ui.events_text_browser.setPlainText(
-            str(res_id._referred_object()))
+            str(res_id.get_referred_object()))
 
         if t == EVENT_VIEW_ITEM_TYPES["EVENT"]:
             event = text
