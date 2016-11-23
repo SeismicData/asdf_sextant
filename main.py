@@ -23,14 +23,21 @@ import itertools
 import os
 import sys
 import tempfile
+from os.path import join
 
 import obspy.core.event
 import pyasdf
 from pyasdf.exceptions import ASDFValueError
 
-from obspy.core import UTCDateTime
+from obspy.core import UTCDateTime, Stream
 
 from DateAxisItem import DateAxisItem
+
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import Column, Integer, String
+from sqlalchemy import or_, and_
 
 
 # Enums only exists in Python 3 and we don't really need them here...
@@ -54,6 +61,19 @@ AUX_DATA_ITEM_TYPES = {
 # Default to antialiased drawing.
 pg.setConfigOptions(antialias=True, foreground=(200, 200, 200),
                     background=None)
+
+
+Base = declarative_base()
+
+class Waveforms(Base):
+    __tablename__ = 'waveforms'
+    # Here we define columns for the table
+    # Notice that each column is also a normal Python instance attribute.
+    starttime = Column(Integer)
+    endtime = Column(Integer)
+    station_id = Column(String(250), nullable=False)
+    tag = Column(String(250), nullable=False)
+    full_id = Column(String(250), nullable=False, primary_key=True)
 
 
 def compile_and_import_ui_files():
@@ -127,6 +147,12 @@ class Window(QtGui.QMainWindow):
             QtWebKit.QWebSettings.DeveloperExtrasEnabled, True)
 
         self._state = {}
+
+        self.ui.openASDF.triggered.connect(self.open_asdf_file)
+
+        # Add right clickability to station view
+        self.ui.station_view.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        self.ui.station_view.customContextMenuRequested.connect(self.station_view_rightClicked)
 
         tmp = tempfile.mkstemp("asdf_sextant")
         os.close(tmp[0])
@@ -365,7 +391,7 @@ class Window(QtGui.QMainWindow):
         popup.exec_(self.ui.references_push_button.parentWidget().mapToGlobal(
                     self.ui.references_push_button.pos()))
 
-    def on_select_file_button_released(self):
+    def open_asdf_file(self):
         """
         Fill the station tree widget upon opening a new file.
         """
@@ -535,6 +561,39 @@ class Window(QtGui.QMainWindow):
             self.update_waveform_plot()
         else:
             pass
+
+
+    def station_view_rightClicked(self, position):
+        item = self.ui.station_view.selectedItems()[0]
+
+        t = item.type()
+
+        def get_station(item):
+            station = item.text(0)
+            if "." not in station:
+                station = item.parent().text(0) + "." + station
+            return station
+
+        if t == STATION_VIEW_ITEM_TYPES["NETWORK"]:
+            pass
+        elif t == STATION_VIEW_ITEM_TYPES["STATIONXML"]:
+            pass
+        elif t == STATION_VIEW_ITEM_TYPES["WAVEFORM"]:
+            pass
+        elif t == STATION_VIEW_ITEM_TYPES["STATION"]:
+            station = get_station(item)
+
+            self.item_menu = QtGui.QMenu(self)
+            action = QtGui.QAction('Extract Time Interval', self)
+            # Connect the triggered menu object to a function passing an extra variable
+            action.triggered.connect(lambda: self.extract_from_continuous(station))
+
+            self.item_menu.addAction(action)
+
+            self.action = self.item_menu.exec_(self.ui.station_view.viewport().mapToGlobal(position))
+
+
+
 
     def on_event_tree_widget_itemClicked(self, item, column):
         t = item.type()
@@ -707,17 +766,46 @@ class Window(QtGui.QMainWindow):
         js_call = "setAllInactive()"
         self.ui.web_view.page().mainFrame().evaluateJavaScript(js_call)
 
-    def on_continuous_check_box_stateChanged(self, state):
-        if self.ui.continuous_check_box.isChecked():
-            interval, ok = QtGui.QInputDialog.getText(self, 'Time Interval',
-                                                  'Time period to plot i.e. 2016-11-01T10:00:00, 2016-11-01T10:30:00')
+    def extract_from_continuous(self, sta):
+        # Get the SQL file for station
+        SQL_filename = join(os.path.dirname(self.filename), str(sta.split('.')[1]) + '.db')
 
-            if ok:
-                interval_tuple = (UTCDateTime(str(interval).split(', ')[0]), UTCDateTime(str(interval).split(', ')[1]))
-                self.st = self.ds.get_waveforms(network='XX', station='GA2',
-                                            location='*', channel='*', starttime=interval_tuple[0],
-                                            endtime=interval_tuple[1], tag='raw_recording')
+        # Initialize the sqlalchemy sqlite engine
+        engine = create_engine('sqlite:////' + SQL_filename)
+
+        Session = sessionmaker(bind=engine)
+        session = Session()
+
+        interval, ok = QtGui.QInputDialog.getText(self, 'Time Interval',
+                                                  'Time period to plot i.e. 2016-11-01T10:00:00, 2016-11-01T10:30:00')
+        if ok:
+            interval_tuple = (UTCDateTime(str(interval).split(', ')[0]).timestamp, UTCDateTime(str(interval).split(', ')[1]).timestamp)
+
+            # Open a new st object
+            self.st = Stream()
+
+            matches = 0
+            for matched_waveform in session.query(Waveforms). \
+                    filter(or_(and_(Waveforms.starttime >= interval_tuple[0], interval_tuple[1] >= Waveforms.endtime),
+                               (and_(Waveforms.starttime <= interval_tuple[1], interval_tuple[1] <= Waveforms.endtime)),
+                               (and_(Waveforms.starttime <= interval_tuple[0], interval_tuple[0] <= Waveforms.endtime)))):
+                matches += 1
+
+                self.st += self.ds.waveforms[str(sta)][matched_waveform.full_id]
+
+            # Attempt to merge all traces with matching ID'S in place
+            self.st.merge()
+            self.st.trim(starttime=UTCDateTime(interval_tuple[0]), endtime=UTCDateTime(interval_tuple[1]))
+
+            if matches:
                 self.update_waveform_plot()
+            elif not matches:
+                print('No Data for Requested Interval')
+
+            #self.st = self.ds.get_waveforms(network=str(sta.split('.')[0]), station=str(sta.split('.')[1]),
+                                        #location='*', channel='*', starttime=interval_tuple[0],
+                                        #endtime=interval_tuple[1], tag='raw_recording')
+            #self.update_waveform_plot()
 
 
 def launch():
@@ -744,13 +832,13 @@ def launch():
 
 if __name__ == "__main__":
 
-    proxy = raw_input("Proxy:")
-    port = raw_input("Proxy Port:")
-    Username = raw_input("Proxy Username:")
-    Password = raw_input("Password:")
-
-    networkProxy = QtNetwork.QNetworkProxy(QtNetwork.QNetworkProxy.HttpProxy, proxy, int(port))
-    networkProxy.setPassword(Password)
-    networkProxy.setUser(Username)
-    QtNetwork.QNetworkProxy.setApplicationProxy(networkProxy)
+    # proxy = raw_input("Proxy:")
+    # port = raw_input("Proxy Port:")
+    # Username = raw_input("Proxy Username:")
+    # Password = raw_input("Password:")
+    #
+    # networkProxy = QtNetwork.QNetworkProxy(QtNetwork.QNetworkProxy.HttpProxy, proxy, int(port))
+    # networkProxy.setPassword(Password)
+    # networkProxy.setUser(Username)
+    # QtNetwork.QNetworkProxy.setApplicationProxy(networkProxy)
     launch()
