@@ -710,7 +710,7 @@ class Window(QtGui.QMainWindow):
     def on_continuous_check_box_stateChanged(self, state):
         if self.ui.continuous_check_box.isChecked():
             interval, ok = QtGui.QInputDialog.getText(self, 'Time Interval',
-                                                  'Enter time period to plot i.e. 2016-11-01T10:00:00, 2016-11-01T10:30:00')
+                                                  'Time period to plot i.e. 2016-11-01T10:00:00, 2016-11-01T10:30:00')
 
             if ok:
                 interval_tuple = (UTCDateTime(str(interval).split(', ')[0]), UTCDateTime(str(interval).split(', ')[1]))
