@@ -714,11 +714,9 @@ class Window(QtGui.QMainWindow):
 
             if ok:
                 interval_tuple = (UTCDateTime(str(interval).split(', ')[0]), UTCDateTime(str(interval).split(', ')[1]))
-                print(interval_tuple)
                 self.st = self.ds.get_waveforms(network='XX', station='GA2',
                                             location='*', channel='*', starttime=interval_tuple[0],
                                             endtime=interval_tuple[1], tag='raw_recording')
-                print(self.st)
                 self.update_waveform_plot()
 
 
@@ -746,13 +744,13 @@ def launch():
 
 if __name__ == "__main__":
 
-    #proxy = raw_input("Proxy:")
-    #port = raw_input("Proxy Port:")
-    #Username = raw_input("Proxy Username:")
-    #Password = raw_input("Password:")
+    proxy = raw_input("Proxy:")
+    port = raw_input("Proxy Port:")
+    Username = raw_input("Proxy Username:")
+    Password = raw_input("Password:")
 
-    #networkProxy = QtNetwork.QNetworkProxy(QtNetwork.QNetworkProxy.HttpProxy, proxy, int(port))
-    #networkProxy.setPassword(Password)
-    #networkProxy.setUser(Username)
-    #QtNetwork.QNetworkProxy.setApplicationProxy(networkProxy)
+    networkProxy = QtNetwork.QNetworkProxy(QtNetwork.QNetworkProxy.HttpProxy, proxy, int(port))
+    networkProxy.setPassword(Password)
+    networkProxy.setUser(Username)
+    QtNetwork.QNetworkProxy.setApplicationProxy(networkProxy)
     launch()
