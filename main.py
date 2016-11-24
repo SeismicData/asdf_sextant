@@ -65,6 +65,7 @@ pg.setConfigOptions(antialias=True, foreground=(200, 200, 200),
 
 Base = declarative_base()
 
+# Class for SQLite database for wavefoms belonging to station
 class Waveforms(Base):
     __tablename__ = 'waveforms'
     # Here we define columns for the SQL table
@@ -73,7 +74,6 @@ class Waveforms(Base):
     station_id = Column(String(250), nullable=False)
     tag = Column(String(250), nullable=False)
     full_id = Column(String(250), nullable=False, primary_key=True)
-
 
 def compile_and_import_ui_files():
     """
@@ -103,7 +103,6 @@ def compile_and_import_ui_files():
         except ImportError as e:
             print("Error importing %s" % py_ui_file)
             print(e.message)
-
 
 def sizeof_fmt(num):
     """
@@ -161,6 +160,10 @@ class Window(QtGui.QMainWindow):
         # Add right clickability to station view
         self.ui.station_view.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         self.ui.station_view.customContextMenuRequested.connect(self.station_view_rightClicked)
+
+        # Add right clickability to event view
+        self.ui.event_tree_widget.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        self.ui.event_tree_widget.customContextMenuRequested.connect(self.event_tree_widget_rightClicked)
 
         tmp = tempfile.mkstemp("asdf_sextant")
         os.close(tmp[0])
@@ -645,16 +648,22 @@ class Window(QtGui.QMainWindow):
             pass
         elif t == STATION_VIEW_ITEM_TYPES["STATION"]:
             station = get_station(item)
+            wave_tag_list = self.ds.waveforms[station].get_waveform_tags()
 
             # Run Method to create ASDF SQL database with SQLite (one db per station within ASDF)
             self.create_ASDF_SQL(station)
 
             self.item_menu = QtGui.QMenu(self)
-            action = QtGui.QAction('Extract Time Interval', self)
-            # Connect the triggered menu object to a function passing an extra variable
-            action.triggered.connect(lambda: self.extract_from_continuous(station))
+            ext_menu = QtGui.QMenu('Extract Time Interval', self)
 
-            self.item_menu.addAction(action)
+            # Add actions for each tag for station
+            for wave_tag in wave_tag_list:
+                action = QtGui.QAction(wave_tag, self)
+                # Connect the triggered menu object to a function passing an extra variable
+                action.triggered.connect(lambda: self.extract_from_continuous(station, wave_tag))
+                ext_menu.addAction(action)
+
+            self.item_menu.addMenu(ext_menu)
 
             self.action = self.item_menu.exec_(self.ui.station_view.viewport().mapToGlobal(position))
 
@@ -684,6 +693,30 @@ class Window(QtGui.QMainWindow):
 
         js_call = "highlightEvent('{event_id}');".format(event_id=event)
         self.ui.events_web_view.page().mainFrame().evaluateJavaScript(js_call)
+
+    def event_tree_widget_rightClicked(self, position):
+        item = self.ui.event_tree_widget.selectedItems()[0]
+
+        t = item.type()
+        if t not in EVENT_VIEW_ITEM_TYPES.values():
+            return
+        text = str(item.text(0))
+        res_id = obspy.core.event.ResourceIdentifier(id=text)
+
+        obj = res_id.get_referred_object()
+        if obj is None:
+            self.events = self.ds.events
+        self.ui.events_text_browser.setPlainText(
+            str(res_id.get_referred_object()))
+
+        if t == EVENT_VIEW_ITEM_TYPES["EVENT"]:
+            event = text
+        elif t == EVENT_VIEW_ITEM_TYPES["ORIGIN"]:
+            event = str(item.parent().parent().text(0))
+        elif t == EVENT_VIEW_ITEM_TYPES["MAGNITUDE"]:
+            event = str(item.parent().parent().text(0))
+        elif t == EVENT_VIEW_ITEM_TYPES["FOCMEC"]:
+            event = str(item.parent().parent().text(0))
 
     def on_auxiliary_data_tree_view_itemClicked(self, item, column):
         t = item.type()
@@ -829,7 +862,7 @@ class Window(QtGui.QMainWindow):
         js_call = "setAllInactive()"
         self.ui.web_view.page().mainFrame().evaluateJavaScript(js_call)
 
-    def extract_from_continuous(self, sta):
+    def extract_from_continuous(self, sta, wave_tag):
         # Function to separate the waveform string into separate fields
         def waveform_sep(ws):
             a = ws.split('__')
@@ -864,7 +897,8 @@ class Window(QtGui.QMainWindow):
                 for matched_waveform in session.query(Waveforms). \
                         filter(or_(and_(Waveforms.starttime >= interval_tuple[0], interval_tuple[1] >= Waveforms.endtime),
                                    (and_(Waveforms.starttime <= interval_tuple[1], interval_tuple[1] <= Waveforms.endtime)),
-                                   (and_(Waveforms.starttime <= interval_tuple[0], interval_tuple[0] <= Waveforms.endtime)))):
+                                   (and_(Waveforms.starttime <= interval_tuple[0], interval_tuple[0] <= Waveforms.endtime))),
+                               Waveforms.tag == wave_tag):
                     matches += 1
                     self.st += self.ds.waveforms[str(sta)][matched_waveform.full_id]
 
