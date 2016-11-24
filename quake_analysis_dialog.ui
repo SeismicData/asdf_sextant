@@ -14,31 +14,35 @@
    <string>Dialog</string>
   </property>
   <layout class="QGridLayout" name="gridLayout">
-   <item row="4" column="0">
-    <widget class="QDialogButtonBox" name="buttonBox">
-     <property name="orientation">
-      <enum>Qt::Horizontal</enum>
-     </property>
-     <property name="standardButtons">
-      <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
+   <item row="0" column="0">
+    <widget class="QCheckBox" name="check_all">
+     <property name="text">
+      <string>Select All</string>
      </property>
     </widget>
    </item>
    <item row="1" column="0">
+    <widget class="QListView" name="StaListView">
+     <property name="selectionMode">
+      <enum>QAbstractItemView::MultiSelection</enum>
+     </property>
+    </widget>
+   </item>
+   <item row="2" column="0">
     <widget class="QCheckBox" name="zcomp">
      <property name="text">
       <string>Z Component</string>
      </property>
     </widget>
    </item>
-   <item row="2" column="0">
+   <item row="3" column="0">
     <widget class="QCheckBox" name="ncomp">
      <property name="text">
       <string>N Component</string>
      </property>
     </widget>
    </item>
-   <item row="3" column="0">
+   <item row="4" column="0">
     <widget class="QCheckBox" name="ecomp">
      <property name="text">
       <string>E Component</string>
@@ -48,8 +52,15 @@
      </property>
     </widget>
    </item>
-   <item row="0" column="0">
-    <widget class="QListView" name="StaListView"/>
+   <item row="5" column="0">
+    <widget class="QDialogButtonBox" name="buttonBox">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+     <property name="standardButtons">
+      <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
+     </property>
+    </widget>
    </item>
   </layout>
  </widget>
