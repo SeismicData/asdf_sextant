@@ -67,8 +67,7 @@ Base = declarative_base()
 
 class Waveforms(Base):
     __tablename__ = 'waveforms'
-    # Here we define columns for the table
-    # Notice that each column is also a normal Python instance attribute.
+    # Here we define columns for the SQL table
     starttime = Column(Integer)
     endtime = Column(Integer)
     station_id = Column(String(250), nullable=False)
@@ -118,6 +117,15 @@ def sizeof_fmt(num):
         num /= 1024.0
     return "%3.1f %s" % (num, "TB")
 
+class timeDialog(QtGui.QDialog):
+    def __init__(self, parent=None):
+        QtGui.QDialog.__init__(self, parent)
+        self.timeui = extract_time_dialog.Ui_ExtractTimeDialog()
+        self.timeui.setupUi(self)
+
+    def getValues(self):
+        return (self.timeui.starttime.dateTime().toPyDateTime(),
+                self.timeui.endtime.dateTime().toPyDateTime())
 
 class Window(QtGui.QMainWindow):
     def __init__(self):
@@ -831,10 +839,11 @@ class Window(QtGui.QMainWindow):
             # Returns: (station_id, starttime, endtime, waveform_tag)
             return (ws.encode('ascii'), a[0].encode('ascii'), starttime, endtime, a[3].encode('ascii'))
 
-        interval, ok = QtGui.QInputDialog.getText(self, 'Time Interval',
-                                                  'Time period to plot i.e. 2016-11-01T10:00:00, 2016-11-01T10:30:00')
-        if ok:
-            interval_tuple = (UTCDateTime(str(interval).split(', ')[0]).timestamp, UTCDateTime(str(interval).split(', ')[1]).timestamp)
+        # Launch the custom extract time dialog
+        dlg = timeDialog(self)
+        if dlg.exec_():
+            values = dlg.getValues()
+            interval_tuple = (UTCDateTime(values[0]).timestamp, UTCDateTime(values[1]).timestamp)
 
             # Open a new st object
             self.st = Stream()
