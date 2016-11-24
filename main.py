@@ -127,10 +127,19 @@ class timeDialog(QtGui.QDialog):
                 self.timeui.endtime.dateTime().toPyDateTime())
 
 class quakeDialog(QtGui.QDialog):
+    '''
+    Select all functionality is modified from Brendan Abel & dbc from their
+    stackoverflow communication Feb 24th 2016:
+    http://stackoverflow.com/questions/35611199/creating-a-toggling-check-all-checkbox-for-a-listview
+    '''
     def __init__(self, parent=None, sta_list=None):
         QtGui.QDialog.__init__(self, parent)
         self.quakeui = quake_analysis_dialog.Ui_QuakeDialog()
         self.quakeui.setupUi(self)
+
+        # Set all check box to checked
+        self.quakeui.check_all.setChecked(True)
+        self.quakeui.check_all.clicked.connect(self.selectAllCheckChanged)
 
         self.model = QtGui.QStandardItemModel(self.quakeui.StaListView)
 
@@ -138,9 +147,39 @@ class quakeDialog(QtGui.QDialog):
         for sta in self.sta_list:
             item = QtGui.QStandardItem(sta)
             item.setCheckable(True)
+
             self.model.appendRow(item)
 
         self.quakeui.StaListView.setModel(self.model)
+        self.quakeui.StaListView.clicked.connect(self.listviewCheckChanged)
+
+    def selectAllCheckChanged(self):
+        ''' updates the listview based on select all checkbox '''
+        model = self.quakeui.StaListView.model()
+        for index in range(model.rowCount()):
+            item = model.item(index)
+            if item.isCheckable():
+                if self.quakeui.check_all.isChecked():
+                    item.setCheckState(QtCore.Qt.Checked)
+                else:
+                    item.setCheckState(QtCore.Qt.Unchecked)
+
+    def listviewCheckChanged(self):
+        ''' updates the select all checkbox based on the listview '''
+        model = self.quakeui.StaListView.model()
+        items = [model.item(index) for index in range(model.rowCount())]
+
+        if all(item.checkState() == QtCore.Qt.Checked for item in items):
+            self.quakeui.check_all.setTristate(False)
+            self.quakeui.check_all.setCheckState(QtCore.Qt.Checked)
+        elif any(item.checkState() == QtCore.Qt.Checked for item in items):
+            self.quakeui.check_all.setTristate(True)
+            self.quakeui.check_all.setCheckState(QtCore.Qt.PartiallyChecked)
+        else:
+            self.quakeui.check_all.setTristate(False)
+            self.quakeui.check_all.setCheckState(QtCore.Qt.Unchecked)
+
+
 
     def getSelected(self):
         select_stations = []
@@ -154,7 +193,6 @@ class quakeDialog(QtGui.QDialog):
         return(select_stations, [self.quakeui.zcomp.isChecked(),
                self.quakeui.ncomp.isChecked(),
                self.quakeui.ecomp.isChecked()])
-
 
 class Window(QtGui.QMainWindow):
     def __init__(self):
