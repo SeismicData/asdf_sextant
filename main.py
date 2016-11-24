@@ -23,7 +23,7 @@ import itertools
 import os
 import sys
 import tempfile
-from os.path import join
+from os.path import join, exists
 
 import obspy.core.event
 import pyasdf
@@ -391,6 +391,60 @@ class Window(QtGui.QMainWindow):
         popup.exec_(self.ui.references_push_button.parentWidget().mapToGlobal(
                     self.ui.references_push_button.pos()))
 
+    def create_ASDF_SQL(self, sta):
+        # Function to separate the waveform string into seperate fields
+        def waveform_sep(ws):
+            a = ws.split('__')
+            starttime = int(UTCDateTime(a[1].encode('ascii')).timestamp)
+            endtime = int(UTCDateTime(a[2].encode('ascii')).timestamp)
+
+            # Returns: (station_id, starttime, endtime, waveform_tag)
+            return (ws.encode('ascii'), a[0].encode('ascii'), starttime, endtime, a[3].encode('ascii'))
+
+        # Get the SQL file for station
+        SQL_filename = join(os.path.dirname(self.filename), str(sta.split('.')[1]) + '.db')
+
+        check_SQL = exists(SQL_filename)
+
+        if check_SQL:
+            return
+        # need to create SQL database
+        elif not check_SQL:
+            # Initialize (open/create) the sqlalchemy sqlite engine
+            engine = create_engine('sqlite:////' + SQL_filename)
+            Session = sessionmaker()
+
+            # Get list of all waveforms for station
+            waveforms_list = self.ds.waveforms[str(sta)].list()
+            #remove the station XML file
+            waveforms_list.remove('StationXML')
+
+            # Create all tables in the engine
+            Base.metadata.create_all(engine)
+
+            # Initiate a session with the SQL database so that we can add data to it
+            Session.configure(bind=engine)
+            session = Session()
+
+            progressDialog = QtGui.QProgressDialog("Building SQL Library for Station {0}".format(str(sta)),
+                                                   "Cancel", 0, len(waveforms_list))
+
+            # go through the waveforms (ignore stationxml file)
+            for _i, sta_wave in enumerate(waveforms_list):
+                progressDialog.setValue(_i)
+
+                # The ASDF formatted waveform name for SQL [full_id, station_id, starttime, endtime, tag]
+                waveform_info = waveform_sep(sta_wave)
+
+                # create new SQL entry
+                new_wave_SQL = Waveforms(full_id=waveform_info[0], station_id=waveform_info[1],
+                                         starttime=waveform_info[2],
+                                         endtime=waveform_info[3], tag=waveform_info[4])
+
+                # Add the waveform info to the session
+                session.add(new_wave_SQL)
+                session.commit()
+
     def open_asdf_file(self):
         """
         Fill the station tree widget upon opening a new file.
@@ -541,27 +595,28 @@ class Window(QtGui.QMainWindow):
         t = item.type()
 
         def get_station(item):
-            station = item.parent().text(0)
+            station = item.text(0)
             if "." not in station:
-                station = item.parent().parent().text(0) + "." + station
+                station = item.parent().text(0) + "." + station
             return station
 
         if t == STATION_VIEW_ITEM_TYPES["NETWORK"]:
             pass
         elif t == STATION_VIEW_ITEM_TYPES["STATION"]:
-            pass
+            station = get_station(item)
+            #Run Method to create ASDF SQL database with SQLite (one db per station within ASDF)
+            self.create_ASDF_SQL(station)
         elif t == STATION_VIEW_ITEM_TYPES["STATIONXML"]:
             station = get_station(item)
             self.ds.waveforms[station].StationXML.plot()#plot_response(0.001)
         elif t == STATION_VIEW_ITEM_TYPES["WAVEFORM"]:
-            station = get_station(item)
+            station = get_station(item.parent())
             self._state["current_station_object"] = self.ds.waveforms[station]
             self._state["current_waveform_tag"] = item.text(0)
             self.st = self.ds.waveforms[station][str(item.text(0))]
             self.update_waveform_plot()
         else:
             pass
-
 
     def station_view_rightClicked(self, position):
         item = self.ui.station_view.selectedItems()[0]
@@ -583,6 +638,9 @@ class Window(QtGui.QMainWindow):
         elif t == STATION_VIEW_ITEM_TYPES["STATION"]:
             station = get_station(item)
 
+            # Run Method to create ASDF SQL database with SQLite (one db per station within ASDF)
+            self.create_ASDF_SQL(station)
+
             self.item_menu = QtGui.QMenu(self)
             action = QtGui.QAction('Extract Time Interval', self)
             # Connect the triggered menu object to a function passing an extra variable
@@ -591,9 +649,6 @@ class Window(QtGui.QMainWindow):
             self.item_menu.addAction(action)
 
             self.action = self.item_menu.exec_(self.ui.station_view.viewport().mapToGlobal(position))
-
-
-
 
     def on_event_tree_widget_itemClicked(self, item, column):
         t = item.type()
@@ -767,14 +822,14 @@ class Window(QtGui.QMainWindow):
         self.ui.web_view.page().mainFrame().evaluateJavaScript(js_call)
 
     def extract_from_continuous(self, sta):
-        # Get the SQL file for station
-        SQL_filename = join(os.path.dirname(self.filename), str(sta.split('.')[1]) + '.db')
+        # Function to separate the waveform string into separate fields
+        def waveform_sep(ws):
+            a = ws.split('__')
+            starttime = int(UTCDateTime(a[1].encode('ascii')).timestamp)
+            endtime = int(UTCDateTime(a[2].encode('ascii')).timestamp)
 
-        # Initialize the sqlalchemy sqlite engine
-        engine = create_engine('sqlite:////' + SQL_filename)
-
-        Session = sessionmaker(bind=engine)
-        session = Session()
+            # Returns: (station_id, starttime, endtime, waveform_tag)
+            return (ws.encode('ascii'), a[0].encode('ascii'), starttime, endtime, a[3].encode('ascii'))
 
         interval, ok = QtGui.QInputDialog.getText(self, 'Time Interval',
                                                   'Time period to plot i.e. 2016-11-01T10:00:00, 2016-11-01T10:30:00')
@@ -783,29 +838,34 @@ class Window(QtGui.QMainWindow):
 
             # Open a new st object
             self.st = Stream()
-
             matches = 0
-            for matched_waveform in session.query(Waveforms). \
-                    filter(or_(and_(Waveforms.starttime >= interval_tuple[0], interval_tuple[1] >= Waveforms.endtime),
-                               (and_(Waveforms.starttime <= interval_tuple[1], interval_tuple[1] <= Waveforms.endtime)),
-                               (and_(Waveforms.starttime <= interval_tuple[0], interval_tuple[0] <= Waveforms.endtime)))):
-                matches += 1
 
-                self.st += self.ds.waveforms[str(sta)][matched_waveform.full_id]
+            # Get the SQL file for station
+            SQL_filename = join(os.path.dirname(self.filename), str(sta.split('.')[1]) + '.db')
 
-            # Attempt to merge all traces with matching ID'S in place
-            self.st.merge()
-            self.st.trim(starttime=UTCDateTime(interval_tuple[0]), endtime=UTCDateTime(interval_tuple[1]))
+            # Initialize (open/create) the sqlalchemy sqlite engine
+            engine = create_engine('sqlite:////' + SQL_filename)
+            Session = sessionmaker()
+
+            check_SQL = exists(SQL_filename)
+
+            if check_SQL:
+                Session.configure(bind=engine)
+                session = Session()
+                for matched_waveform in session.query(Waveforms). \
+                        filter(or_(and_(Waveforms.starttime >= interval_tuple[0], interval_tuple[1] >= Waveforms.endtime),
+                                   (and_(Waveforms.starttime <= interval_tuple[1], interval_tuple[1] <= Waveforms.endtime)),
+                                   (and_(Waveforms.starttime <= interval_tuple[0], interval_tuple[0] <= Waveforms.endtime)))):
+                    matches += 1
+                    self.st += self.ds.waveforms[str(sta)][matched_waveform.full_id]
 
             if matches:
+                # Attempt to merge all traces with matching ID'S in place
+                self.st.merge()
+                self.st.trim(starttime=UTCDateTime(interval_tuple[0]), endtime=UTCDateTime(interval_tuple[1]))
                 self.update_waveform_plot()
             elif not matches:
                 print('No Data for Requested Interval')
-
-            #self.st = self.ds.get_waveforms(network=str(sta.split('.')[0]), station=str(sta.split('.')[1]),
-                                        #location='*', channel='*', starttime=interval_tuple[0],
-                                        #endtime=interval_tuple[1], tag='raw_recording')
-            #self.update_waveform_plot()
 
 
 def launch():
