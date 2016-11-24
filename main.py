@@ -126,6 +126,36 @@ class timeDialog(QtGui.QDialog):
         return (self.timeui.starttime.dateTime().toPyDateTime(),
                 self.timeui.endtime.dateTime().toPyDateTime())
 
+class quakeDialog(QtGui.QDialog):
+    def __init__(self, parent=None, sta_list=None):
+        QtGui.QDialog.__init__(self, parent)
+        self.quakeui = quake_analysis_dialog.Ui_QuakeDialog()
+        self.quakeui.setupUi(self)
+
+        self.model = QtGui.QStandardItemModel(self.quakeui.StaListView)
+
+        self.sta_list = sta_list
+        for sta in self.sta_list:
+            item = QtGui.QStandardItem(sta)
+            item.setCheckable(True)
+            self.model.appendRow(item)
+
+        self.quakeui.StaListView.setModel(self.model)
+
+    def getSelected(self):
+        select_stations = []
+        i = 0
+        while self.model.item(i):
+            if self.model.item(i).checkState():
+                select_stations.append(str(self.model.item(i).text().split('.')[1]))
+            i += 1
+
+        # Return Selected stations and checked components
+        return(select_stations, [self.quakeui.zcomp.isChecked(),
+               self.quakeui.ncomp.isChecked(),
+               self.quakeui.ecomp.isChecked()])
+
+
 class Window(QtGui.QMainWindow):
     def __init__(self):
         QtGui.QMainWindow.__init__(self)
@@ -535,6 +565,7 @@ class Window(QtGui.QMainWindow):
         self.build_station_view_list()
 
     def update_waveform_plot(self):
+        self.ui.central_tab.setCurrentIndex(0)
         self.ui.reset_view_push_button.setEnabled(True)
 
         # Get the filter settings.
@@ -653,7 +684,7 @@ class Window(QtGui.QMainWindow):
             # Run Method to create ASDF SQL database with SQLite (one db per station within ASDF)
             self.create_ASDF_SQL(station)
 
-            self.item_menu = QtGui.QMenu(self)
+            self.sta_item_menu = QtGui.QMenu(self)
             ext_menu = QtGui.QMenu('Extract Time Interval', self)
 
             # Add actions for each tag for station
@@ -663,9 +694,9 @@ class Window(QtGui.QMainWindow):
                 action.triggered.connect(lambda: self.extract_from_continuous(station, wave_tag))
                 ext_menu.addAction(action)
 
-            self.item_menu.addMenu(ext_menu)
+            self.sta_item_menu.addMenu(ext_menu)
 
-            self.action = self.item_menu.exec_(self.ui.station_view.viewport().mapToGlobal(position))
+            self.action = self.sta_item_menu.exec_(self.ui.station_view.viewport().mapToGlobal(position))
 
     def on_event_tree_widget_itemClicked(self, item, column):
         t = item.type()
@@ -717,6 +748,15 @@ class Window(QtGui.QMainWindow):
             event = str(item.parent().parent().text(0))
         elif t == EVENT_VIEW_ITEM_TYPES["FOCMEC"]:
             event = str(item.parent().parent().text(0))
+
+        self.event_item_menu = QtGui.QMenu(self)
+
+        action = QtGui.QAction('Plot Event', self)
+        # Connect the triggered menu object to a function passing an extra variable
+        action.triggered.connect(lambda: self.analyse_earthquake(obj))
+        self.event_item_menu.addAction(action)
+
+        self.action = self.event_item_menu.exec_(self.ui.station_view.viewport().mapToGlobal(position))
 
     def on_auxiliary_data_tree_view_itemClicked(self, item, column):
         t = item.type()
@@ -909,6 +949,36 @@ class Window(QtGui.QMainWindow):
                 self.update_waveform_plot()
             elif not matches:
                 print('No Data for Requested Interval')
+
+    def analyse_earthquake(self, event_obj):
+        # Get event catalogue
+        self.event_cat = self.ds.events
+        comp_list = ['*Z', '*N', '*E']
+
+
+        # Launch the custom earthquake analysis dialog
+        quake_dlg = quakeDialog(parent=self, sta_list=self.ds.waveforms.list())
+        if quake_dlg.exec_():
+            select_sta, bool_comp = quake_dlg.getSelected()
+
+            query_comp = list(itertools.compress(comp_list, bool_comp))
+
+
+            # Open up a new stream object
+            self.st = Stream()
+
+            # use the ifilter functionality to extract desired streams to visualize
+            for station in self.ds.ifilter(self.ds.q.station == select_sta,
+                                           self.ds.q.channel == query_comp,
+                                           self.ds.q.event == event_obj):
+                for filtered_id in station.list():
+                    if filtered_id == 'StationXML':
+                        continue
+                    self.st += station[filtered_id]
+
+            if self.st.__nonzero__():
+                self.update_waveform_plot()
+
 
 
 def launch():
