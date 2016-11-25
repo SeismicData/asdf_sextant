@@ -33,12 +33,9 @@ from obspy.core import UTCDateTime, Stream
 
 from DateAxisItem import DateAxisItem
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text, Column, Integer, String, or_, and_
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, String
-from sqlalchemy import or_, and_
-
 
 # Enums only exists in Python 3 and we don't really need them here...
 STATION_VIEW_ITEM_TYPES = {
@@ -975,29 +972,48 @@ class Window(QtGui.QMainWindow):
         js_call = "setAllInactive()"
         self.ui.web_view.page().mainFrame().evaluateJavaScript(js_call)
 
+    def query_sql_db(self, query, sql_filename, sta):
+        # Open a new st object
+        st = Stream()
+
+        # Initialize (open/create) the sqlalchemy sqlite engine
+        engine = create_engine('sqlite:////' + sql_filename)
+        Session = sessionmaker()
+        Session.configure(bind=engine)
+        session = Session()
+
+        for matched_waveform in session.query(Waveforms).filter(query):
+            st += self.ds.waveforms[sta][matched_waveform.full_id]
+
+        return(st)
+
     def extract_from_continuous(self, override, **kwargs):
         # Open a new st object
         self.st = Stream()
-        matches = 0
+
         # If override flag then we are calling this
         # method by using prev/next interval buttons
         if override:
             interval_tuple = (self.new_start_time.timestamp, self.new_end_time.timestamp)
             for _i, st_id in enumerate(kwargs['st_ids']):
+
+                sta = str(st_id.split('.')[0])+'.'+str(st_id.split('.')[1])
                 # Get the SQL file for station
                 SQL_filename = join(os.path.dirname(self.filename), str(st_id.split('.')[1]) + '.db')
-                # Initialize (open/create) the sqlalchemy sqlite engine
-                engine = create_engine('sqlite:////' + SQL_filename)
-                Session = sessionmaker()
-                Session.configure(bind=engine)
-                session = Session()
-                for matched_waveform in session.query(Waveforms). \
-                        filter(or_(and_(Waveforms.starttime >= interval_tuple[0], interval_tuple[1] >= Waveforms.endtime),
-                                   (and_(Waveforms.starttime <= interval_tuple[1], interval_tuple[1] <= Waveforms.endtime)),
-                                   (and_(Waveforms.starttime <= interval_tuple[0], interval_tuple[0] <= Waveforms.endtime))),
-                               Waveforms.station_id == st_id, Waveforms.tag == kwargs['st_tags'][_i]):
-                    matches += 1
-                    self.st += self.ds.waveforms[str(st_id.split('.')[0])+'.'+str(st_id.split('.')[1])][matched_waveform.full_id]
+
+                query_stmt = text("Waveforms.tag == :tag AND "
+                                  "Waveforms.station_id == :stid AND ("
+                                  "(Waveforms.starttime >= :start AND :end >= Waveforms.endtime) OR"
+                                  "(Waveforms.starttime <= :end AND :end <= Waveforms.endtime) OR"
+                                  "(Waveforms.starttime <= :start AND :start <= Waveforms.endtime))")
+
+                query_stmt = query_stmt.bindparams(stid=st_id, start=interval_tuple[0], end=interval_tuple[1],
+                                                   tag=kwargs['st_tags'][_i])
+
+                ret_st = self.query_sql_db(query_stmt, SQL_filename, sta)
+
+                self.st += ret_st
+
 
 
         elif not override:
@@ -1010,26 +1026,25 @@ class Window(QtGui.QMainWindow):
                 # Get the SQL file for station
                 SQL_filename = join(os.path.dirname(self.filename), str(kwargs['sta'].split('.')[1]) + '.db')
 
-                # Initialize (open/create) the sqlalchemy sqlite engine
-                engine = create_engine('sqlite:////' + SQL_filename)
-                Session = sessionmaker()
+                query_stmt = text("Waveforms.tag == :tag AND ("
+                                  "(Waveforms.starttime >= :start AND :end >= Waveforms.endtime) OR"
+                                  "(Waveforms.starttime <= :end AND :end <= Waveforms.endtime) OR"
+                                  "(Waveforms.starttime <= :start AND :start <= Waveforms.endtime))")
 
-                Session.configure(bind=engine)
-                session = Session()
-                for matched_waveform in session.query(Waveforms). \
-                        filter(or_(and_(Waveforms.starttime >= interval_tuple[0], interval_tuple[1] >= Waveforms.endtime),
-                                   (and_(Waveforms.starttime <= interval_tuple[1], interval_tuple[1] <= Waveforms.endtime)),
-                                   (and_(Waveforms.starttime <= interval_tuple[0], interval_tuple[0] <= Waveforms.endtime))),
-                               Waveforms.tag == kwargs['wave_tag']):
-                    matches += 1
-                    self.st += self.ds.waveforms[str(kwargs['sta'])][matched_waveform.full_id]
+                query_stmt = query_stmt.bindparams(start=interval_tuple[0],end=interval_tuple[1],
+                                                   tag=kwargs['wave_tag'])
 
-        if matches:
+                ret_st = self.query_sql_db(query_stmt, SQL_filename, kwargs['sta'])
+
+                self.st += ret_st
+
+
+        if self.st.__nonzero__():
             # Attempt to merge all traces with matching ID'S in place
             self.st.merge()
             self.st.trim(starttime=UTCDateTime(interval_tuple[0]), endtime=UTCDateTime(interval_tuple[1]))
             self.update_waveform_plot()
-        elif not matches:
+        else:
             msg = QtGui.QMessageBox()
             msg.setIcon(QtGui.QMessageBox.Critical)
             msg.setText("No Data for Requested Time Interval")
@@ -1039,6 +1054,7 @@ class Window(QtGui.QMainWindow):
             msg.setWindowTitle("Extract Time Error")
             msg.setStandardButtons(QtGui.QMessageBox.Ok)
             msg.exec_()
+
 
     def analyse_earthquake(self, event_obj):
         # Get event catalogue
