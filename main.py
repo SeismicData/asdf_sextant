@@ -982,7 +982,15 @@ class Window(QtGui.QMainWindow):
                 self.st.trim(starttime=UTCDateTime(interval_tuple[0]), endtime=UTCDateTime(interval_tuple[1]))
                 self.update_waveform_plot()
             elif not matches:
-                print('No Data for Requested Interval')
+                msg = QtGui.QMessageBox()
+                msg.setIcon(QtGui.QMessageBox.Critical)
+                msg.setText("No Data for Requested Time Interval")
+                msg.setDetailedText("There are no waveforms to display for selected time interval:"
+                                    "\nStart Time = "+str(UTCDateTime(interval_tuple[0],precision=0))+
+                                    "\nEnd Time =   "+str(UTCDateTime(interval_tuple[1],precision=0)))
+                msg.setWindowTitle("Extract Time Error")
+                msg.setStandardButtons(QtGui.QMessageBox.Ok)
+                msg.exec_()
 
     def analyse_earthquake(self, event_obj):
         # Get event catalogue
