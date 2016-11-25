@@ -327,7 +327,6 @@ class Window(QtGui.QMainWindow):
 
         items = []
 
-
         if self.ui.group_by_network_check_box.isChecked():
             for key, group in itertools.groupby(
                     self.ds.waveforms,
@@ -343,14 +342,12 @@ class Window(QtGui.QMainWindow):
 
                     # Add children.
                     children = []
-
-                    for waveform in station.list():
-                        if waveform == 'StationXML':
-                            children.append(
-                                QtGui.QTreeWidgetItem(
-                                    ["StationXML"],
-                                    type=STATION_VIEW_ITEM_TYPES["STATIONXML"]))
-                            continue
+                    if "StationXML" in station.list():
+                        children.append(
+                            QtGui.QTreeWidgetItem(
+                                ["StationXML"],
+                                type=STATION_VIEW_ITEM_TYPES["STATIONXML"]))
+                    for waveform in station.get_waveform_tags():
                         children.append(
                             QtGui.QTreeWidgetItem(
                                 [waveform],
@@ -369,13 +366,12 @@ class Window(QtGui.QMainWindow):
 
                 # Add children.
                 children = []
-                for waveform in station.list():
-                    if waveform == 'StationXML':
-                        children.append(
+                if "StationXML" in station.list():
+                    children.append(
                         QtGui.QTreeWidgetItem(
                             ["StationXML"],
                             type=STATION_VIEW_ITEM_TYPES["STATIONXML"]))
-                        continue
+                for waveform in station.get_waveform_tags():
                     children.append(
                         QtGui.QTreeWidgetItem(
                             [waveform],
