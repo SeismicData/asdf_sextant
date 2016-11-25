@@ -475,6 +475,7 @@ class Window(QtGui.QMainWindow):
 
         # Get the SQL file for station
         SQL_filename = join(os.path.dirname(self.filename), str(sta.split('.')[1]) + '.db')
+        print(SQL_filename)
 
         check_SQL = exists(SQL_filename)
 
@@ -742,7 +743,8 @@ class Window(QtGui.QMainWindow):
             return station
 
         if t == STATION_VIEW_ITEM_TYPES["NETWORK"]:
-            pass
+            self.net_item_menu = QtGui.QMenu(self)
+            ext_menu = QtGui.QMenu('Select NSLC', self)
         elif t == STATION_VIEW_ITEM_TYPES["STATIONXML"]:
             pass
         elif t == STATION_VIEW_ITEM_TYPES["WAVEFORM"]:
