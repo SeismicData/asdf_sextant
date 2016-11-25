@@ -466,7 +466,7 @@ class Window(QtGui.QMainWindow):
         popup.exec_(self.ui.references_push_button.parentWidget().mapToGlobal(
                     self.ui.references_push_button.pos()))
 
-    def create_ASDF_SQL(self, sta):
+    def create_asdf_sql(self, sta):
         # Function to separate the waveform string into seperate fields
         def waveform_sep(ws):
             a = ws.split('__')
@@ -720,7 +720,7 @@ class Window(QtGui.QMainWindow):
         elif t == STATION_VIEW_ITEM_TYPES["STATION"]:
             station = get_station(item)
             #Run Method to create ASDF SQL database with SQLite (one db per station within ASDF)
-            self.create_ASDF_SQL(station)
+            self.create_asdf_sql(station)
         elif t == STATION_VIEW_ITEM_TYPES["STATIONXML"]:
             station = get_station(item)
             self.ds.waveforms[station].StationXML.plot()#plot_response(0.001)
@@ -755,7 +755,7 @@ class Window(QtGui.QMainWindow):
             wave_tag_list = self.ds.waveforms[station].get_waveform_tags()
 
             # Run Method to create ASDF SQL database with SQLite (one db per station within ASDF)
-            self.create_ASDF_SQL(station)
+            self.create_asdf_sql(station)
 
             self.sta_item_menu = QtGui.QMenu(self)
             ext_menu = QtGui.QMenu('Extract Time Interval', self)
