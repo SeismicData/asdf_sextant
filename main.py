@@ -484,7 +484,7 @@ class Window(QtGui.QMainWindow):
         # need to create SQL database
         elif not check_SQL:
             # Initialize (open/create) the sqlalchemy sqlite engine
-            engine = create_engine('sqlite:////' + SQL_filename)
+            engine = create_engine('sqlite:///' + SQL_filename)
             Session = sessionmaker()
 
             # Get list of all waveforms for station
@@ -979,7 +979,7 @@ class Window(QtGui.QMainWindow):
         st = Stream()
 
         # Initialize (open/create) the sqlalchemy sqlite engine
-        engine = create_engine('sqlite:////' + sql_filename)
+        engine = create_engine('sqlite:///' + sql_filename)
         Session = sessionmaker()
         Session.configure(bind=engine)
         session = Session()
