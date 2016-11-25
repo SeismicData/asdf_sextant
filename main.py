@@ -474,7 +474,7 @@ class Window(QtGui.QMainWindow):
             return (ws.encode('ascii'), a[0].encode('ascii'), starttime, endtime, a[3].encode('ascii'))
 
         # Get the SQL file for station
-        SQL_filename = os.path.dirname(self.filename)+ '/' + str(sta.split('.')[1]) + '.db'
+        SQL_filename = r""+os.path.dirname(self.filename)+ '/' + str(sta.split('.')[1]) + '.db'
         print(SQL_filename)
 
         check_SQL = exists(SQL_filename)
@@ -1001,7 +1001,7 @@ class Window(QtGui.QMainWindow):
 
                 sta = str(st_id.split('.')[0])+'.'+str(st_id.split('.')[1])
                 # Get the SQL file for station
-                SQL_filename = os.path.dirname(self.filename) + '/' + str(st_id.split('.')[1]) + '.db'
+                SQL_filename = r""+os.path.dirname(self.filename) + '/' + str(st_id.split('.')[1]) + '.db'
 
                 query_stmt = text("Waveforms.tag == :tag AND "
                                   "Waveforms.station_id == :stid AND ("
@@ -1026,7 +1026,7 @@ class Window(QtGui.QMainWindow):
                 interval_tuple = (values[0].timestamp, values[1].timestamp)
 
                 # Get the SQL file for station
-                SQL_filename = os.path.dirname(self.filename) + '/' + str(kwargs['sta'].split('.')[1]) + '.db'
+                SQL_filename = r""+os.path.dirname(self.filename) + '/' + str(kwargs['sta'].split('.')[1]) + '.db'
 
                 query_stmt = text("Waveforms.tag == :tag AND ("
                                   "(Waveforms.starttime >= :start AND :end >= Waveforms.endtime) OR"
