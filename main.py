@@ -123,8 +123,8 @@ class timeDialog(QtGui.QDialog):
         self.timeui.setupUi(self)
 
     def getValues(self):
-        return (self.timeui.starttime.dateTime().toPyDateTime(),
-                self.timeui.endtime.dateTime().toPyDateTime())
+        return (UTCDateTime(self.timeui.starttime.dateTime().toPyDateTime()),
+                UTCDateTime(self.timeui.endtime.dateTime().toPyDateTime()))
 
 class quakeDialog(QtGui.QDialog):
     '''
@@ -382,7 +382,7 @@ class Window(QtGui.QMainWindow):
 
         self.ui.station_view.insertTopLevelItems(0, items)
 
-    def on_reset_view_push_button_released(self):
+    def on_initial_view_push_button_released(self):
         self.reset_view()
 
     def show_provenance_for_id(self, prov_id):
@@ -600,7 +600,10 @@ class Window(QtGui.QMainWindow):
 
     def update_waveform_plot(self):
         self.ui.central_tab.setCurrentIndex(0)
-        self.ui.reset_view_push_button.setEnabled(True)
+        self.ui.initial_view_push_button.setEnabled(True)
+        self.ui.previous_view_push_button.setEnabled(True)
+        self.ui.previous_interval_push_button.setEnabled(True)
+        self.ui.next_interval_push_button.setEnabled(True)
 
         # Get the filter settings.
         filter_settings = {}
@@ -625,6 +628,8 @@ class Window(QtGui.QMainWindow):
         max_values = []
 
         self._state["waveform_plots"] = []
+        self._state["station_id"] = []
+        self._state["station_tag"] = []
         for _i, tr in enumerate(temp_st):
             plot = self.ui.graph.addPlot(
                 _i, 0, title=tr.id,
@@ -632,6 +637,11 @@ class Window(QtGui.QMainWindow):
                                                   utcOffset=0)})
             plot.show()
             self._state["waveform_plots"].append(plot)
+            self._state["station_id"].append(tr.stats.network+'.'+
+                                               tr.stats.station+'.'+
+                                               tr.stats.location+'.'+
+                                               tr.stats.channel)
+            self._state["station_tag"].append(str(tr.stats.asdf.tag))
             plot.plot(tr.times() + tr.stats.starttime.timestamp, tr.data)
             starttimes.append(tr.stats.starttime)
             endtimes.append(tr.stats.endtime)
@@ -643,11 +653,40 @@ class Window(QtGui.QMainWindow):
         self._state["waveform_plots_min_value"] = min(min_values)
         self._state["waveform_plots_max_value"] = max(max_values)
 
+
         for plot in self._state["waveform_plots"][1:]:
             plot.setXLink(self._state["waveform_plots"][0])
             plot.setYLink(self._state["waveform_plots"][0])
 
         self.reset_view()
+
+    def on_previous_interval_push_button_released(self):
+        # Get start and end time of previous interval with 10% overlap
+        starttime = UTCDateTime(self._state["waveform_plots_min_time"])
+        endtime = UTCDateTime(self._state["waveform_plots_max_time"])
+
+        delta_time = endtime - starttime
+        overlap_time = delta_time * 0.1
+
+        self.new_start_time = starttime - (delta_time - overlap_time)
+        self.new_end_time = starttime + overlap_time
+
+        self.extract_from_continuous(True, st_ids=self._state["station_id"],
+                                     st_tags=self._state["station_tag"])
+
+    def on_next_interval_push_button_released(self):
+        # Get start and end time of next interval with 10% overlap
+        starttime = UTCDateTime(self._state["waveform_plots_min_time"])
+        endtime = UTCDateTime(self._state["waveform_plots_max_time"])
+
+        delta_time = endtime - starttime
+        overlap_time = delta_time * 0.1
+
+        self.new_start_time = endtime - (overlap_time)
+        self.new_end_time = endtime + (delta_time - overlap_time)
+
+        self.extract_from_continuous(True, st_ids = self._state["station_id"],
+                                     st_tags = self._state["station_tag"])
 
     def reset_view(self):
         self._state["waveform_plots"][0].setXRange(
@@ -725,7 +764,7 @@ class Window(QtGui.QMainWindow):
             for wave_tag in wave_tag_list:
                 action = QtGui.QAction(wave_tag, self)
                 # Connect the triggered menu object to a function passing an extra variable
-                action.triggered.connect(lambda: self.extract_from_continuous(station, wave_tag))
+                action.triggered.connect(lambda: self.extract_from_continuous(False, sta=station, wave_tag=wave_tag))
                 ext_menu.addAction(action)
 
             self.sta_item_menu.addMenu(ext_menu)
@@ -936,61 +975,70 @@ class Window(QtGui.QMainWindow):
         js_call = "setAllInactive()"
         self.ui.web_view.page().mainFrame().evaluateJavaScript(js_call)
 
-    def extract_from_continuous(self, sta, wave_tag):
-        # Function to separate the waveform string into separate fields
-        def waveform_sep(ws):
-            a = ws.split('__')
-            starttime = int(UTCDateTime(a[1].encode('ascii')).timestamp)
-            endtime = int(UTCDateTime(a[2].encode('ascii')).timestamp)
-
-            # Returns: (station_id, starttime, endtime, waveform_tag)
-            return (ws.encode('ascii'), a[0].encode('ascii'), starttime, endtime, a[3].encode('ascii'))
-
-        # Launch the custom extract time dialog
-        dlg = timeDialog(self)
-        if dlg.exec_():
-            values = dlg.getValues()
-            interval_tuple = (UTCDateTime(values[0]).timestamp, UTCDateTime(values[1]).timestamp)
-
-            # Open a new st object
-            self.st = Stream()
-            matches = 0
-
-            # Get the SQL file for station
-            SQL_filename = join(os.path.dirname(self.filename), str(sta.split('.')[1]) + '.db')
-
-            # Initialize (open/create) the sqlalchemy sqlite engine
-            engine = create_engine('sqlite:////' + SQL_filename)
-            Session = sessionmaker()
-
-            check_SQL = exists(SQL_filename)
-
-            if check_SQL:
+    def extract_from_continuous(self, override, **kwargs):
+        # Open a new st object
+        self.st = Stream()
+        matches = 0
+        # If override flag then we are calling this
+        # method by using prev/next interval buttons
+        if override:
+            interval_tuple = (self.new_start_time.timestamp, self.new_end_time.timestamp)
+            for _i, st_id in enumerate(kwargs['st_ids']):
+                # Get the SQL file for station
+                SQL_filename = join(os.path.dirname(self.filename), str(st_id.split('.')[1]) + '.db')
+                # Initialize (open/create) the sqlalchemy sqlite engine
+                engine = create_engine('sqlite:////' + SQL_filename)
+                Session = sessionmaker()
                 Session.configure(bind=engine)
                 session = Session()
                 for matched_waveform in session.query(Waveforms). \
                         filter(or_(and_(Waveforms.starttime >= interval_tuple[0], interval_tuple[1] >= Waveforms.endtime),
                                    (and_(Waveforms.starttime <= interval_tuple[1], interval_tuple[1] <= Waveforms.endtime)),
                                    (and_(Waveforms.starttime <= interval_tuple[0], interval_tuple[0] <= Waveforms.endtime))),
-                               Waveforms.tag == wave_tag):
+                               Waveforms.station_id == st_id, Waveforms.tag == kwargs['st_tags'][_i]):
                     matches += 1
-                    self.st += self.ds.waveforms[str(sta)][matched_waveform.full_id]
+                    self.st += self.ds.waveforms[str(st_id.split('.')[0])+'.'+str(st_id.split('.')[1])][matched_waveform.full_id]
 
-            if matches:
-                # Attempt to merge all traces with matching ID'S in place
-                self.st.merge()
-                self.st.trim(starttime=UTCDateTime(interval_tuple[0]), endtime=UTCDateTime(interval_tuple[1]))
-                self.update_waveform_plot()
-            elif not matches:
-                msg = QtGui.QMessageBox()
-                msg.setIcon(QtGui.QMessageBox.Critical)
-                msg.setText("No Data for Requested Time Interval")
-                msg.setDetailedText("There are no waveforms to display for selected time interval:"
-                                    "\nStart Time = "+str(UTCDateTime(interval_tuple[0],precision=0))+
-                                    "\nEnd Time =   "+str(UTCDateTime(interval_tuple[1],precision=0)))
-                msg.setWindowTitle("Extract Time Error")
-                msg.setStandardButtons(QtGui.QMessageBox.Ok)
-                msg.exec_()
+
+        elif not override:
+            # Launch the custom extract time dialog
+            dlg = timeDialog(self)
+            if dlg.exec_():
+                values = dlg.getValues()
+                interval_tuple = (values[0].timestamp, values[1].timestamp)
+
+                # Get the SQL file for station
+                SQL_filename = join(os.path.dirname(self.filename), str(kwargs['sta'].split('.')[1]) + '.db')
+
+                # Initialize (open/create) the sqlalchemy sqlite engine
+                engine = create_engine('sqlite:////' + SQL_filename)
+                Session = sessionmaker()
+
+                Session.configure(bind=engine)
+                session = Session()
+                for matched_waveform in session.query(Waveforms). \
+                        filter(or_(and_(Waveforms.starttime >= interval_tuple[0], interval_tuple[1] >= Waveforms.endtime),
+                                   (and_(Waveforms.starttime <= interval_tuple[1], interval_tuple[1] <= Waveforms.endtime)),
+                                   (and_(Waveforms.starttime <= interval_tuple[0], interval_tuple[0] <= Waveforms.endtime))),
+                               Waveforms.tag == kwargs['wave_tag']):
+                    matches += 1
+                    self.st += self.ds.waveforms[str(kwargs['sta'])][matched_waveform.full_id]
+
+        if matches:
+            # Attempt to merge all traces with matching ID'S in place
+            self.st.merge()
+            self.st.trim(starttime=UTCDateTime(interval_tuple[0]), endtime=UTCDateTime(interval_tuple[1]))
+            self.update_waveform_plot()
+        elif not matches:
+            msg = QtGui.QMessageBox()
+            msg.setIcon(QtGui.QMessageBox.Critical)
+            msg.setText("No Data for Requested Time Interval")
+            msg.setDetailedText("There are no waveforms to display for selected time interval:"
+                                "\nStart Time = "+str(UTCDateTime(interval_tuple[0],precision=0))+
+                                "\nEnd Time =   "+str(UTCDateTime(interval_tuple[1],precision=0)))
+            msg.setWindowTitle("Extract Time Error")
+            msg.setStandardButtons(QtGui.QMessageBox.Ok)
+            msg.exec_()
 
     def analyse_earthquake(self, event_obj):
         # Get event catalogue
