@@ -475,7 +475,6 @@ class Window(QtGui.QMainWindow):
 
         # Get the SQL file for station
         SQL_filename = r""+os.path.dirname(self.filename)+ '/' + str(sta.split('.')[1]) + '.db'
-        print(SQL_filename)
 
         check_SQL = exists(SQL_filename)
 
@@ -720,7 +719,7 @@ class Window(QtGui.QMainWindow):
             #Run Method to create ASDF SQL database with SQLite (one db per station within ASDF)
             self.create_asdf_sql(station)
         elif t == STATION_VIEW_ITEM_TYPES["STATIONXML"]:
-            station = get_station(item)
+            station = get_station(item.parent())
             self.ds.waveforms[station].StationXML.plot()#plot_response(0.001)
         elif t == STATION_VIEW_ITEM_TYPES["WAVEFORM"]:
             station = get_station(item.parent())
@@ -827,6 +826,19 @@ class Window(QtGui.QMainWindow):
         # Connect the triggered menu object to a function passing an extra variable
         action.triggered.connect(lambda: self.analyse_earthquake(obj))
         self.event_item_menu.addAction(action)
+
+        # ext_menu = QtGui.QMenu('Extract Time Interval', self)
+        #
+        # # Add actions for each tag for station
+        # for wave_tag in wave_tag_list:
+        #     action = QtGui.QAction(wave_tag, self)
+        #     # Connect the triggered menu object to a function passing an extra variable
+        #     action.triggered.connect(lambda: self.extract_from_continuous(False, sta=station, wave_tag=wave_tag))
+        #     ext_menu.addAction(action)
+        #
+        # self.event_item_menu.addMenu(ext_menu)
+        #
+
 
         self.action = self.event_item_menu.exec_(self.ui.station_view.viewport().mapToGlobal(position))
 
