@@ -92,12 +92,42 @@
           <item>
            <layout class="QHBoxLayout" name="horizontalLayout_2">
             <item>
-             <widget class="QPushButton" name="reset_view_push_button">
+             <widget class="QPushButton" name="initial_view_push_button">
               <property name="enabled">
                <bool>false</bool>
               </property>
               <property name="text">
-               <string>Reset View</string>
+               <string>Initial View</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QPushButton" name="previous_view_push_button">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+              <property name="text">
+               <string>Previous View</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QPushButton" name="previous_interval_push_button">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+              <property name="text">
+               <string>Previous Interval</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QPushButton" name="next_interval_push_button">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+              <property name="text">
+               <string>Next Interval</string>
               </property>
              </widget>
             </item>
