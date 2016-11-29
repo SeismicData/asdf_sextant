@@ -232,6 +232,8 @@ class Window(QtGui.QMainWindow):
         self.ui.event_tree_widget.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         self.ui.event_tree_widget.customContextMenuRequested.connect(self.event_tree_widget_rightClicked)
 
+        QtGui.QApplication.instance().focusChanged.connect(self.changed_widget_focus)
+
         tmp = tempfile.mkstemp("asdf_sextant")
         os.close(tmp[0])
         try:
@@ -255,6 +257,15 @@ class Window(QtGui.QMainWindow):
             self.on_station_view_itemEntered)
         self.ui.station_view.itemExited.connect(
             self.on_station_view_itemExited)
+
+    def changed_widget_focus(self):
+        if QtGui.QApplication.focusWidget() == self.ui.graph:
+            # Access the state dictionary and iterate through all stations in graph then highlight statins on web view
+            for station_id in self._state["station_id"]:
+                sta = station_id.split('.')[0] + '.' + station_id.split('.')[1]
+                # Run Java Script to highlight all selected stations in station view
+                js_call = "highlightStation('{station}')".format(station=sta)
+                self.ui.web_view.page().mainFrame().evaluateJavaScript(js_call)
 
     def build_event_tree_view(self):
         if not hasattr(self, "ds") or not self.ds:
@@ -466,11 +477,6 @@ class Window(QtGui.QMainWindow):
                     self.ui.references_push_button.pos()))
 
     def create_asdf_sql(self, sta):
-        print('hi')
-        # Run Java Script to highlight all selected stations in station view
-        js_call = "highlightSelected('{station}')".format(station=['XX.GA1','XX.GA2'])
-        self.ui.web_view.page().mainFrame().evaluateJavaScript(js_call)
-
         # Function to separate the waveform string into seperate fields
         def waveform_sep(ws):
             a = ws.split('__')
@@ -1106,14 +1112,13 @@ class Window(QtGui.QMainWindow):
 
                 # Iterate through traces
                 for tr in self.st:
-                    station_id = tr.stats.network + '.' +tr.stats.station
                     # Run Java Script to highlight all selected stations in station view
-                    js_call = "highlightStation('{station}')".format(station=station_id)
+                    js_call = "highlightStation('{station}')".format(station=tr.stats.network + '.' +tr.stats.station)
                     self.ui.web_view.page().mainFrame().evaluateJavaScript(js_call)
 
 
                     # Get inventory for trace
-                    inv = self.ds.waveforms[station_id].StationXML
+                    inv = self.ds.waveforms[tr.stats.network + '.' +tr.stats.station].StationXML
                     sta_coords = inv.get_coordinates(tr.get_id())
 
                     dist, baz, _ = gps2dist_azimuth(sta_coords['latitude'],
@@ -1160,9 +1165,9 @@ def launch():
 
 if __name__ == "__main__":
 
-    # proxy = raw_input("Proxy:")
-    # port = raw_input("Proxy Port:")
-    #
-    # networkProxy = QtNetwork.QNetworkProxy(QtNetwork.QNetworkProxy.HttpProxy, proxy, int(port))
-    # QtNetwork.QNetworkProxy.setApplicationProxy(networkProxy)
+    proxy = raw_input("Proxy:")
+    port = raw_input("Proxy Port:")
+
+    networkProxy = QtNetwork.QNetworkProxy(QtNetwork.QNetworkProxy.HttpProxy, proxy, int(port))
+    QtNetwork.QNetworkProxy.setApplicationProxy(networkProxy)
     launch()
