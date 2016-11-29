@@ -30,6 +30,8 @@ import pyasdf
 from pyasdf.exceptions import ASDFValueError
 
 from obspy.core import UTCDateTime, Stream
+from obspy.geodetics import gps2dist_azimuth, kilometer2degrees
+from obspy.taup import TauPyModel
 
 from DateAxisItem import DateAxisItem
 
@@ -1069,7 +1071,6 @@ class Window(QtGui.QMainWindow):
             msg.setStandardButtons(QtGui.QMessageBox.Ok)
             msg.exec_()
 
-
     def analyse_earthquake(self, event_obj):
         # Get event catalogue
         self.event_cat = self.ds.events
@@ -1097,6 +1098,31 @@ class Window(QtGui.QMainWindow):
                     self.st += station[filtered_id]
 
             if self.st.__nonzero__():
+                # Get quake origin info
+                origin_info = event_obj.preferred_origin() or event_obj.origins[0]
+
+                # Iterate through traces
+                for tr in self.st:
+                    # Get inventory for trace
+                    inv = self.ds.waveforms[tr.stats.network + '.' +tr.stats.station].StationXML
+                    sta_coords = inv.get_coordinates(tr.get_id())
+
+                    dist, baz, _ = gps2dist_azimuth(sta_coords['latitude'],
+                                                    sta_coords['longitude'],
+                                                    origin_info.latitude,
+                                                    origin_info.longitude)
+                    dist_deg = kilometer2degrees(dist/1000.0)
+                    tt_model = TauPyModel(model='iasp91')
+                    arrivals = tt_model.get_travel_times(origin_info.depth/1000.0, dist_deg, ('P'))
+
+                    # Write info to trace header
+                    tr.stats.distance = dist
+                    tr.stats.ptt = arrivals[0]
+
+                # Sort the st by distance from quake
+                self.st.sort(keys=['distance'])
+
+
                 self.update_waveform_plot()
 
 
