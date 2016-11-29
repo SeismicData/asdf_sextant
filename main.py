@@ -1160,9 +1160,9 @@ def launch():
 
 if __name__ == "__main__":
 
-    proxy = raw_input("Proxy:")
-    port = raw_input("Proxy Port:")
-
-    networkProxy = QtNetwork.QNetworkProxy(QtNetwork.QNetworkProxy.HttpProxy, proxy, int(port))
-    QtNetwork.QNetworkProxy.setApplicationProxy(networkProxy)
+    # proxy = raw_input("Proxy:")
+    # port = raw_input("Proxy Port:")
+    #
+    # networkProxy = QtNetwork.QNetworkProxy(QtNetwork.QNetworkProxy.HttpProxy, proxy, int(port))
+    # QtNetwork.QNetworkProxy.setApplicationProxy(networkProxy)
     launch()
