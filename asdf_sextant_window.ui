@@ -31,33 +31,7 @@
    </property>
    <layout class="QVBoxLayout" name="verticalLayout">
     <item>
-     <layout class="QHBoxLayout" name="horizontalLayout">
-      <item>
-       <widget class="QPushButton" name="select_file_button">
-        <property name="font">
-         <font>
-          <pointsize>9</pointsize>
-         </font>
-        </property>
-        <property name="text">
-         <string>Open File</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <spacer name="horizontalSpacer">
-        <property name="orientation">
-         <enum>Qt::Horizontal</enum>
-        </property>
-        <property name="sizeHint" stdset="0">
-         <size>
-          <width>40</width>
-          <height>20</height>
-         </size>
-        </property>
-       </spacer>
-      </item>
-     </layout>
+     <layout class="QHBoxLayout" name="horizontalLayout"/>
     </item>
     <item>
      <widget class="QTabWidget" name="central_tab">
@@ -83,6 +57,9 @@
           </item>
           <item>
            <widget class="StationTreeWidget" name="station_view">
+            <property name="horizontalScrollBarPolicy">
+             <enum>Qt::ScrollBarAsNeeded</enum>
+            </property>
             <property name="sortingEnabled">
              <bool>false</bool>
             </property>
@@ -100,8 +77,8 @@
            </widget>
           </item>
           <item>
-           <widget class="QWebView" name="web_view">
-            <property name="url">
+           <widget class="QWebView" name="web_view" native="true">
+            <property name="url" stdset="0">
              <url>
               <string>about:blank</string>
              </url>
@@ -115,12 +92,42 @@
           <item>
            <layout class="QHBoxLayout" name="horizontalLayout_2">
             <item>
-             <widget class="QPushButton" name="reset_view_push_button">
+             <widget class="QPushButton" name="initial_view_push_button">
               <property name="enabled">
                <bool>false</bool>
               </property>
               <property name="text">
-               <string>Reset View</string>
+               <string>Initial View</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QPushButton" name="previous_view_push_button">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+              <property name="text">
+               <string>Previous View</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QPushButton" name="previous_interval_push_button">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+              <property name="text">
+               <string>Previous Interval</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QPushButton" name="next_interval_push_button">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+              <property name="text">
+               <string>Next Interval</string>
               </property>
              </widget>
             </item>
@@ -355,8 +362,8 @@
         <item>
          <layout class="QVBoxLayout" name="verticalLayout_5" stretch="1,1">
           <item>
-           <widget class="QWebView" name="events_web_view">
-            <property name="url">
+           <widget class="QWebView" name="events_web_view" native="true">
+            <property name="url" stdset="0">
              <url>
               <string>about:blank</string>
              </url>
@@ -382,6 +389,43 @@
    </layout>
   </widget>
   <widget class="QStatusBar" name="status_bar"/>
+  <widget class="QMenuBar" name="menuBar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>1201</width>
+     <height>25</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menuFile">
+    <property name="title">
+     <string>File</string>
+    </property>
+    <addaction name="openASDF"/>
+   </widget>
+   <widget class="QMenu" name="menuEdit">
+    <property name="title">
+     <string>Edit</string>
+    </property>
+   </widget>
+   <widget class="QMenu" name="menuTools">
+    <property name="title">
+     <string>Tools</string>
+    </property>
+   </widget>
+   <addaction name="menuFile"/>
+   <addaction name="menuEdit"/>
+   <addaction name="menuTools"/>
+  </widget>
+  <action name="openASDF">
+   <property name="text">
+    <string>Open ASDF</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+O</string>
+   </property>
+  </action>
  </widget>
  <customwidgets>
   <customwidget>

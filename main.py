@@ -12,7 +12,7 @@ Graphical user interface for Instaseis.
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
-from PyQt4 import QtGui, QtCore, QtWebKit
+from PyQt4 import QtGui, QtCore, QtWebKit, QtNetwork
 import pyqtgraph as pg
 import qdarkstyle
 
@@ -23,13 +23,21 @@ import itertools
 import os
 import sys
 import tempfile
+from os.path import join, exists
 
 import obspy.core.event
 import pyasdf
 from pyasdf.exceptions import ASDFValueError
 
+from obspy.core import UTCDateTime, Stream
+from obspy.geodetics import gps2dist_azimuth, kilometer2degrees
+from obspy.taup import TauPyModel
+
 from DateAxisItem import DateAxisItem
 
+from sqlalchemy import create_engine, text, Column, Integer, String, or_, and_
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.declarative import declarative_base
 
 # Enums only exists in Python 3 and we don't really need them here...
 STATION_VIEW_ITEM_TYPES = {
@@ -53,6 +61,18 @@ AUX_DATA_ITEM_TYPES = {
 pg.setConfigOptions(antialias=True, foreground=(200, 200, 200),
                     background=None)
 
+
+Base = declarative_base()
+
+# Class for SQLite database for wavefoms belonging to station
+class Waveforms(Base):
+    __tablename__ = 'waveforms'
+    # Here we define columns for the SQL table
+    starttime = Column(Integer)
+    endtime = Column(Integer)
+    station_id = Column(String(250), nullable=False)
+    tag = Column(String(250), nullable=False)
+    full_id = Column(String(250), nullable=False, primary_key=True)
 
 def compile_and_import_ui_files():
     """
@@ -83,7 +103,6 @@ def compile_and_import_ui_files():
             print("Error importing %s" % py_ui_file)
             print(e.message)
 
-
 def sizeof_fmt(num):
     """
     Handy formatting for human readable filesize.
@@ -96,6 +115,83 @@ def sizeof_fmt(num):
         num /= 1024.0
     return "%3.1f %s" % (num, "TB")
 
+class timeDialog(QtGui.QDialog):
+    def __init__(self, parent=None):
+        QtGui.QDialog.__init__(self, parent)
+        self.timeui = extract_time_dialog.Ui_ExtractTimeDialog()
+        self.timeui.setupUi(self)
+
+    def getValues(self):
+        return (UTCDateTime(self.timeui.starttime.dateTime().toPyDateTime()),
+                UTCDateTime(self.timeui.endtime.dateTime().toPyDateTime()))
+
+class selectionDialog(QtGui.QDialog):
+    '''
+    Select all functionality is modified from Brendan Abel & dbc from their
+    stackoverflow communication Feb 24th 2016:
+    http://stackoverflow.com/questions/35611199/creating-a-toggling-check-all-checkbox-for-a-listview
+    '''
+    def __init__(self, parent=None, sta_list=None):
+        QtGui.QDialog.__init__(self, parent)
+        self.selui = select_stacomp_dialog.Ui_SelectDialog()
+        self.selui.setupUi(self)
+
+        # Set all check box to checked
+        self.selui.check_all.setChecked(True)
+        self.selui.check_all.clicked.connect(self.selectAllCheckChanged)
+
+        self.model = QtGui.QStandardItemModel(self.selui.StaListView)
+
+        self.sta_list = sta_list
+        for sta in self.sta_list:
+            item = QtGui.QStandardItem(sta)
+            item.setCheckable(True)
+
+            self.model.appendRow(item)
+
+        self.selui.StaListView.setModel(self.model)
+        self.selui.StaListView.clicked.connect(self.listviewCheckChanged)
+
+    def selectAllCheckChanged(self):
+        ''' updates the listview based on select all checkbox '''
+        model = self.selui.StaListView.model()
+        for index in range(model.rowCount()):
+            item = model.item(index)
+            if item.isCheckable():
+                if self.selui.check_all.isChecked():
+                    item.setCheckState(QtCore.Qt.Checked)
+                else:
+                    item.setCheckState(QtCore.Qt.Unchecked)
+
+    def listviewCheckChanged(self):
+        ''' updates the select all checkbox based on the listview '''
+        model = self.selui.StaListView.model()
+        items = [model.item(index) for index in range(model.rowCount())]
+
+        if all(item.checkState() == QtCore.Qt.Checked for item in items):
+            self.selui.check_all.setTristate(False)
+            self.selui.check_all.setCheckState(QtCore.Qt.Checked)
+        elif any(item.checkState() == QtCore.Qt.Checked for item in items):
+            self.selui.check_all.setTristate(True)
+            self.selui.check_all.setCheckState(QtCore.Qt.PartiallyChecked)
+        else:
+            self.selui.check_all.setTristate(False)
+            self.selui.check_all.setCheckState(QtCore.Qt.Unchecked)
+
+
+
+    def getSelected(self):
+        select_stations = []
+        i = 0
+        while self.model.item(i):
+            if self.model.item(i).checkState():
+                select_stations.append(str(self.model.item(i).text()))
+            i += 1
+
+        # Return Selected stations and checked components
+        return(select_stations, [self.selui.zcomp.isChecked(),
+               self.selui.ncomp.isChecked(),
+               self.selui.ecomp.isChecked()])
 
 class Window(QtGui.QMainWindow):
     def __init__(self):
@@ -126,6 +222,18 @@ class Window(QtGui.QMainWindow):
 
         self._state = {}
 
+        self.ui.openASDF.triggered.connect(self.open_asdf_file)
+
+        # Add right clickability to station view
+        self.ui.station_view.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        self.ui.station_view.customContextMenuRequested.connect(self.station_view_rightClicked)
+
+        # Add right clickability to event view
+        self.ui.event_tree_widget.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        self.ui.event_tree_widget.customContextMenuRequested.connect(self.event_tree_widget_rightClicked)
+
+        QtGui.QApplication.instance().focusChanged.connect(self.changed_widget_focus)
+
         tmp = tempfile.mkstemp("asdf_sextant")
         os.close(tmp[0])
         try:
@@ -149,6 +257,15 @@ class Window(QtGui.QMainWindow):
             self.on_station_view_itemEntered)
         self.ui.station_view.itemExited.connect(
             self.on_station_view_itemExited)
+
+    def changed_widget_focus(self):
+        if QtGui.QApplication.focusWidget() == self.ui.graph:
+            # Access the state dictionary and iterate through all stations in graph then highlight statins on web view
+            for station_id in self._state["station_id"]:
+                sta = station_id.split('.')[0] + '.' + station_id.split('.')[1]
+                # Run Java Script to highlight all selected stations in station view
+                js_call = "highlightStation('{station}')".format(station=sta)
+                self.ui.web_view.page().mainFrame().evaluateJavaScript(js_call)
 
     def build_event_tree_view(self):
         if not hasattr(self, "ds") or not self.ds:
@@ -275,7 +392,7 @@ class Window(QtGui.QMainWindow):
 
         self.ui.station_view.insertTopLevelItems(0, items)
 
-    def on_reset_view_push_button_released(self):
+    def on_initial_view_push_button_released(self):
         self.reset_view()
 
     def show_provenance_for_id(self, prov_id):
@@ -359,7 +476,61 @@ class Window(QtGui.QMainWindow):
         popup.exec_(self.ui.references_push_button.parentWidget().mapToGlobal(
                     self.ui.references_push_button.pos()))
 
-    def on_select_file_button_released(self):
+    def create_asdf_sql(self, sta):
+        # Function to separate the waveform string into seperate fields
+        def waveform_sep(ws):
+            a = ws.split('__')
+            starttime = int(UTCDateTime(a[1].encode('ascii')).timestamp)
+            endtime = int(UTCDateTime(a[2].encode('ascii')).timestamp)
+
+            # Returns: (station_id, starttime, endtime, waveform_tag)
+            return (ws.encode('ascii'), a[0].encode('ascii'), starttime, endtime, a[3].encode('ascii'))
+
+        # Get the SQL file for station
+        SQL_filename = r""+os.path.dirname(self.filename)+ '/' + str(sta.split('.')[1]) + '.db'
+
+        check_SQL = exists(SQL_filename)
+
+        if check_SQL:
+            return
+        # need to create SQL database
+        elif not check_SQL:
+            # Initialize (open/create) the sqlalchemy sqlite engine
+            engine = create_engine('sqlite:///' + SQL_filename)
+            Session = sessionmaker()
+
+            # Get list of all waveforms for station
+            waveforms_list = self.ds.waveforms[str(sta)].list()
+            #remove the station XML file
+            waveforms_list.remove('StationXML')
+
+            # Create all tables in the engine
+            Base.metadata.create_all(engine)
+
+            # Initiate a session with the SQL database so that we can add data to it
+            Session.configure(bind=engine)
+            session = Session()
+
+            progressDialog = QtGui.QProgressDialog("Building SQL Library for Station {0}".format(str(sta)),
+                                                   "Cancel", 0, len(waveforms_list))
+
+            # go through the waveforms (ignore stationxml file)
+            for _i, sta_wave in enumerate(waveforms_list):
+                progressDialog.setValue(_i)
+
+                # The ASDF formatted waveform name for SQL [full_id, station_id, starttime, endtime, tag]
+                waveform_info = waveform_sep(sta_wave)
+
+                # create new SQL entry
+                new_wave_SQL = Waveforms(full_id=waveform_info[0], station_id=waveform_info[1],
+                                         starttime=waveform_info[2],
+                                         endtime=waveform_info[3], tag=waveform_info[4])
+
+                # Add the waveform info to the session
+                session.add(new_wave_SQL)
+                session.commit()
+
+    def open_asdf_file(self):
         """
         Fill the station tree widget upon opening a new file.
         """
@@ -438,7 +609,11 @@ class Window(QtGui.QMainWindow):
         self.build_station_view_list()
 
     def update_waveform_plot(self):
-        self.ui.reset_view_push_button.setEnabled(True)
+        self.ui.central_tab.setCurrentIndex(0)
+        self.ui.initial_view_push_button.setEnabled(True)
+        self.ui.previous_view_push_button.setEnabled(True)
+        self.ui.previous_interval_push_button.setEnabled(True)
+        self.ui.next_interval_push_button.setEnabled(True)
 
         # Get the filter settings.
         filter_settings = {}
@@ -463,6 +638,8 @@ class Window(QtGui.QMainWindow):
         max_values = []
 
         self._state["waveform_plots"] = []
+        self._state["station_id"] = []
+        self._state["station_tag"] = []
         for _i, tr in enumerate(temp_st):
             plot = self.ui.graph.addPlot(
                 _i, 0, title=tr.id,
@@ -470,6 +647,11 @@ class Window(QtGui.QMainWindow):
                                                   utcOffset=0)})
             plot.show()
             self._state["waveform_plots"].append(plot)
+            self._state["station_id"].append(tr.stats.network+'.'+
+                                               tr.stats.station+'.'+
+                                               tr.stats.location+'.'+
+                                               tr.stats.channel)
+            self._state["station_tag"].append(str(tr.stats.asdf.tag))
             plot.plot(tr.times() + tr.stats.starttime.timestamp, tr.data)
             starttimes.append(tr.stats.starttime)
             endtimes.append(tr.stats.endtime)
@@ -481,11 +663,40 @@ class Window(QtGui.QMainWindow):
         self._state["waveform_plots_min_value"] = min(min_values)
         self._state["waveform_plots_max_value"] = max(max_values)
 
+
         for plot in self._state["waveform_plots"][1:]:
             plot.setXLink(self._state["waveform_plots"][0])
             plot.setYLink(self._state["waveform_plots"][0])
 
         self.reset_view()
+
+    def on_previous_interval_push_button_released(self):
+        # Get start and end time of previous interval with 10% overlap
+        starttime = UTCDateTime(self._state["waveform_plots_min_time"])
+        endtime = UTCDateTime(self._state["waveform_plots_max_time"])
+
+        delta_time = endtime - starttime
+        overlap_time = delta_time * 0.1
+
+        self.new_start_time = starttime - (delta_time - overlap_time)
+        self.new_end_time = starttime + overlap_time
+
+        self.extract_from_continuous(True, st_ids=self._state["station_id"],
+                                     st_tags=self._state["station_tag"])
+
+    def on_next_interval_push_button_released(self):
+        # Get start and end time of next interval with 10% overlap
+        starttime = UTCDateTime(self._state["waveform_plots_min_time"])
+        endtime = UTCDateTime(self._state["waveform_plots_max_time"])
+
+        delta_time = endtime - starttime
+        overlap_time = delta_time * 0.1
+
+        self.new_start_time = endtime - (overlap_time)
+        self.new_end_time = endtime + (delta_time - overlap_time)
+
+        self.extract_from_continuous(True, st_ids = self._state["station_id"],
+                                     st_tags = self._state["station_tag"])
 
     def reset_view(self):
         self._state["waveform_plots"][0].setXRange(
@@ -509,26 +720,67 @@ class Window(QtGui.QMainWindow):
         t = item.type()
 
         def get_station(item):
-            station = item.parent().text(0)
+            station = item.text(0)
             if "." not in station:
-                station = item.parent().parent().text(0) + "." + station
+                station = item.parent().text(0) + "." + station
             return station
 
         if t == STATION_VIEW_ITEM_TYPES["NETWORK"]:
             pass
         elif t == STATION_VIEW_ITEM_TYPES["STATION"]:
-            pass
+            station = get_station(item)
+            #Run Method to create ASDF SQL database with SQLite (one db per station within ASDF)
+            self.create_asdf_sql(station)
         elif t == STATION_VIEW_ITEM_TYPES["STATIONXML"]:
-            station = get_station(item)
-            self.ds.waveforms[station].StationXML.plot_response(0.001)
+            station = get_station(item.parent())
+            self.ds.waveforms[station].StationXML.plot()#plot_response(0.001)
         elif t == STATION_VIEW_ITEM_TYPES["WAVEFORM"]:
-            station = get_station(item)
+            station = get_station(item.parent())
             self._state["current_station_object"] = self.ds.waveforms[station]
             self._state["current_waveform_tag"] = item.text(0)
-            self.st = self.ds.waveforms[station][item.text(0)].sort()
+            self.st = self.ds.waveforms[station][str(item.text(0))]
             self.update_waveform_plot()
         else:
             pass
+
+    def station_view_rightClicked(self, position):
+        item = self.ui.station_view.selectedItems()[0]
+
+        t = item.type()
+
+        def get_station(item):
+            station = item.text(0)
+            if "." not in station:
+                station = item.parent().text(0) + "." + station
+            return station
+
+        if t == STATION_VIEW_ITEM_TYPES["NETWORK"]:
+            self.net_item_menu = QtGui.QMenu(self)
+            ext_menu = QtGui.QMenu('Select NSLC', self)
+        elif t == STATION_VIEW_ITEM_TYPES["STATIONXML"]:
+            pass
+        elif t == STATION_VIEW_ITEM_TYPES["WAVEFORM"]:
+            pass
+        elif t == STATION_VIEW_ITEM_TYPES["STATION"]:
+            station = get_station(item)
+            wave_tag_list = self.ds.waveforms[station].get_waveform_tags()
+
+            # Run Method to create ASDF SQL database with SQLite (one db per station within ASDF)
+            self.create_asdf_sql(station)
+
+            self.sta_item_menu = QtGui.QMenu(self)
+            ext_menu = QtGui.QMenu('Extract Time Interval', self)
+
+            # Add actions for each tag for station
+            for wave_tag in wave_tag_list:
+                action = QtGui.QAction(wave_tag, self)
+                # Connect the triggered menu object to a function passing an extra variable
+                action.triggered.connect(lambda: self.extract_from_continuous(False, sta=station, wave_tag=wave_tag))
+                ext_menu.addAction(action)
+
+            self.sta_item_menu.addMenu(ext_menu)
+
+            self.action = self.sta_item_menu.exec_(self.ui.station_view.viewport().mapToGlobal(position))
 
     def on_event_tree_widget_itemClicked(self, item, column):
         t = item.type()
@@ -556,6 +808,52 @@ class Window(QtGui.QMainWindow):
 
         js_call = "highlightEvent('{event_id}');".format(event_id=event)
         self.ui.events_web_view.page().mainFrame().evaluateJavaScript(js_call)
+
+    def event_tree_widget_rightClicked(self, position):
+        item = self.ui.event_tree_widget.selectedItems()[0]
+
+        t = item.type()
+        if t not in EVENT_VIEW_ITEM_TYPES.values():
+            return
+        text = str(item.text(0))
+        res_id = obspy.core.event.ResourceIdentifier(id=text)
+
+        obj = res_id.get_referred_object()
+        if obj is None:
+            self.events = self.ds.events
+        self.ui.events_text_browser.setPlainText(
+            str(res_id.get_referred_object()))
+
+        if t == EVENT_VIEW_ITEM_TYPES["EVENT"]:
+            event = text
+        elif t == EVENT_VIEW_ITEM_TYPES["ORIGIN"]:
+            event = str(item.parent().parent().text(0))
+        elif t == EVENT_VIEW_ITEM_TYPES["MAGNITUDE"]:
+            event = str(item.parent().parent().text(0))
+        elif t == EVENT_VIEW_ITEM_TYPES["FOCMEC"]:
+            event = str(item.parent().parent().text(0))
+
+        self.event_item_menu = QtGui.QMenu(self)
+
+        action = QtGui.QAction('Plot Event', self)
+        # Connect the triggered menu object to a function passing an extra variable
+        action.triggered.connect(lambda: self.analyse_earthquake(obj))
+        self.event_item_menu.addAction(action)
+
+        # ext_menu = QtGui.QMenu('Extract Time Interval', self)
+        #
+        # # Add actions for each tag for station
+        # for wave_tag in wave_tag_list:
+        #     action = QtGui.QAction(wave_tag, self)
+        #     # Connect the triggered menu object to a function passing an extra variable
+        #     action.triggered.connect(lambda: self.extract_from_continuous(False, sta=station, wave_tag=wave_tag))
+        #     ext_menu.addAction(action)
+        #
+        # self.event_item_menu.addMenu(ext_menu)
+        #
+
+
+        self.action = self.event_item_menu.exec_(self.ui.station_view.viewport().mapToGlobal(position))
 
     def on_auxiliary_data_tree_view_itemClicked(self, item, column):
         t = item.type()
@@ -701,6 +999,147 @@ class Window(QtGui.QMainWindow):
         js_call = "setAllInactive()"
         self.ui.web_view.page().mainFrame().evaluateJavaScript(js_call)
 
+    def query_sql_db(self, query, sql_filename, sta):
+        # Open a new st object
+        st = Stream()
+
+        # Initialize (open/create) the sqlalchemy sqlite engine
+        engine = create_engine('sqlite:///' + sql_filename)
+        Session = sessionmaker()
+        Session.configure(bind=engine)
+        session = Session()
+
+        for matched_waveform in session.query(Waveforms).filter(query):
+            st += self.ds.waveforms[sta][matched_waveform.full_id]
+
+        return(st)
+
+    def extract_from_continuous(self, override, **kwargs):
+        # Open a new st object
+        self.st = Stream()
+
+        # If override flag then we are calling this
+        # method by using prev/next interval buttons
+        if override:
+            interval_tuple = (self.new_start_time.timestamp, self.new_end_time.timestamp)
+            for _i, st_id in enumerate(kwargs['st_ids']):
+
+                sta = str(st_id.split('.')[0])+'.'+str(st_id.split('.')[1])
+                # Get the SQL file for station
+                SQL_filename = r""+os.path.dirname(self.filename) + '/' + str(st_id.split('.')[1]) + '.db'
+
+                query_stmt = text("Waveforms.tag == :tag AND "
+                                  "Waveforms.station_id == :stid AND ("
+                                  "(Waveforms.starttime >= :start AND :end >= Waveforms.endtime) OR"
+                                  "(Waveforms.starttime <= :end AND :end <= Waveforms.endtime) OR"
+                                  "(Waveforms.starttime <= :start AND :start <= Waveforms.endtime))")
+
+                query_stmt = query_stmt.bindparams(stid=st_id, start=interval_tuple[0], end=interval_tuple[1],
+                                                   tag=kwargs['st_tags'][_i])
+
+                ret_st = self.query_sql_db(query_stmt, SQL_filename, sta)
+
+                self.st += ret_st
+
+
+
+        elif not override:
+            # Launch the custom extract time dialog
+            dlg = timeDialog(self)
+            if dlg.exec_():
+                values = dlg.getValues()
+                interval_tuple = (values[0].timestamp, values[1].timestamp)
+
+                # Get the SQL file for station
+                SQL_filename = r""+os.path.dirname(self.filename) + '/' + str(kwargs['sta'].split('.')[1]) + '.db'
+
+                query_stmt = text("Waveforms.tag == :tag AND ("
+                                  "(Waveforms.starttime >= :start AND :end >= Waveforms.endtime) OR"
+                                  "(Waveforms.starttime <= :end AND :end <= Waveforms.endtime) OR"
+                                  "(Waveforms.starttime <= :start AND :start <= Waveforms.endtime))")
+
+                query_stmt = query_stmt.bindparams(start=interval_tuple[0],end=interval_tuple[1],
+                                                   tag=kwargs['wave_tag'])
+
+                ret_st = self.query_sql_db(query_stmt, SQL_filename, kwargs['sta'])
+
+                self.st += ret_st
+
+
+        if self.st.__nonzero__():
+            # Attempt to merge all traces with matching ID'S in place
+            self.st.merge()
+            self.st.trim(starttime=UTCDateTime(interval_tuple[0]), endtime=UTCDateTime(interval_tuple[1]))
+            self.update_waveform_plot()
+        else:
+            msg = QtGui.QMessageBox()
+            msg.setIcon(QtGui.QMessageBox.Critical)
+            msg.setText("No Data for Requested Time Interval")
+            msg.setDetailedText("There are no waveforms to display for selected time interval:"
+                                "\nStart Time = "+str(UTCDateTime(interval_tuple[0],precision=0))+
+                                "\nEnd Time =   "+str(UTCDateTime(interval_tuple[1],precision=0)))
+            msg.setWindowTitle("Extract Time Error")
+            msg.setStandardButtons(QtGui.QMessageBox.Ok)
+            msg.exec_()
+
+    def analyse_earthquake(self, event_obj):
+        # Get event catalogue
+        self.event_cat = self.ds.events
+        comp_list = ['*Z', '*N', '*E']
+
+
+        # Launch the custom station/component selection dialog
+        sel_dlg = selectionDialog(parent=self, sta_list=self.ds.waveforms.list())
+        if sel_dlg.exec_():
+            select_sta, bool_comp = sel_dlg.getSelected()
+            query_comp = list(itertools.compress(comp_list, bool_comp))
+
+            # Open up a new stream object
+            self.st = Stream()
+
+            # use the ifilter functionality to extract desired streams to visualize
+            for station in self.ds.ifilter(self.ds.q.station == map(lambda el: el.split('.')[1], select_sta),
+                                           self.ds.q.channel == query_comp,
+                                           self.ds.q.event == event_obj):
+                for filtered_id in station.list():
+                    if filtered_id == 'StationXML':
+                        continue
+                    self.st += station[filtered_id]
+
+            if self.st.__nonzero__():
+                # Get quake origin info
+                origin_info = event_obj.preferred_origin() or event_obj.origins[0]
+
+                # Iterate through traces
+                for tr in self.st:
+                    # Run Java Script to highlight all selected stations in station view
+                    js_call = "highlightStation('{station}')".format(station=tr.stats.network + '.' +tr.stats.station)
+                    self.ui.web_view.page().mainFrame().evaluateJavaScript(js_call)
+
+
+                    # Get inventory for trace
+                    inv = self.ds.waveforms[tr.stats.network + '.' +tr.stats.station].StationXML
+                    sta_coords = inv.get_coordinates(tr.get_id())
+
+                    dist, baz, _ = gps2dist_azimuth(sta_coords['latitude'],
+                                                    sta_coords['longitude'],
+                                                    origin_info.latitude,
+                                                    origin_info.longitude)
+                    dist_deg = kilometer2degrees(dist/1000.0)
+                    tt_model = TauPyModel(model='iasp91')
+                    arrivals = tt_model.get_travel_times(origin_info.depth/1000.0, dist_deg, ('P'))
+
+                    # Write info to trace header
+                    tr.stats.distance = dist
+                    tr.stats.ptt = arrivals[0]
+
+                # Sort the st by distance from quake
+                self.st.sort(keys=['distance'])
+
+
+                self.update_waveform_plot()
+
+
 
 def launch():
     # Automatically compile all ui files if they have been changed.
@@ -725,4 +1164,10 @@ def launch():
 
 
 if __name__ == "__main__":
+
+    proxy = raw_input("Proxy:")
+    port = raw_input("Proxy Port:")
+
+    networkProxy = QtNetwork.QNetworkProxy(QtNetwork.QNetworkProxy.HttpProxy, proxy, int(port))
+    QtNetwork.QNetworkProxy.setApplicationProxy(networkProxy)
     launch()
