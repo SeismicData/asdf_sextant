@@ -185,7 +185,7 @@ class selectionDialog(QtGui.QDialog):
         i = 0
         while self.model.item(i):
             if self.model.item(i).checkState():
-                select_stations.append(str(self.model.item(i).text().split('.')[1]))
+                select_stations.append(str(self.model.item(i).text()))
             i += 1
 
         # Return Selected stations and checked components
@@ -466,6 +466,11 @@ class Window(QtGui.QMainWindow):
                     self.ui.references_push_button.pos()))
 
     def create_asdf_sql(self, sta):
+        print('hi')
+        # Run Java Script to highlight all selected stations in station view
+        js_call = "highlightSelected('{station}')".format(station=['XX.GA1','XX.GA2'])
+        self.ui.web_view.page().mainFrame().evaluateJavaScript(js_call)
+
         # Function to separate the waveform string into seperate fields
         def waveform_sep(ws):
             a = ws.split('__')
@@ -1081,15 +1086,13 @@ class Window(QtGui.QMainWindow):
         sel_dlg = selectionDialog(parent=self, sta_list=self.ds.waveforms.list())
         if sel_dlg.exec_():
             select_sta, bool_comp = sel_dlg.getSelected()
-
             query_comp = list(itertools.compress(comp_list, bool_comp))
-
 
             # Open up a new stream object
             self.st = Stream()
 
             # use the ifilter functionality to extract desired streams to visualize
-            for station in self.ds.ifilter(self.ds.q.station == select_sta,
+            for station in self.ds.ifilter(self.ds.q.station == map(lambda el: el.split('.')[1], select_sta),
                                            self.ds.q.channel == query_comp,
                                            self.ds.q.event == event_obj):
                 for filtered_id in station.list():
@@ -1103,8 +1106,14 @@ class Window(QtGui.QMainWindow):
 
                 # Iterate through traces
                 for tr in self.st:
+                    station_id = tr.stats.network + '.' +tr.stats.station
+                    # Run Java Script to highlight all selected stations in station view
+                    js_call = "highlightStation('{station}')".format(station=station_id)
+                    self.ui.web_view.page().mainFrame().evaluateJavaScript(js_call)
+
+
                     # Get inventory for trace
-                    inv = self.ds.waveforms[tr.stats.network + '.' +tr.stats.station].StationXML
+                    inv = self.ds.waveforms[station_id].StationXML
                     sta_coords = inv.get_coordinates(tr.get_id())
 
                     dist, baz, _ = gps2dist_azimuth(sta_coords['latitude'],
@@ -1151,13 +1160,9 @@ def launch():
 
 if __name__ == "__main__":
 
-    # proxy = raw_input("Proxy:")
-    # port = raw_input("Proxy Port:")
-    # Username = raw_input("Proxy Username:")
-    # Password = raw_input("Password:")
-    #
-    # networkProxy = QtNetwork.QNetworkProxy(QtNetwork.QNetworkProxy.HttpProxy, proxy, int(port))
-    # networkProxy.setPassword(Password)
-    # networkProxy.setUser(Username)
-    # QtNetwork.QNetworkProxy.setApplicationProxy(networkProxy)
+    proxy = raw_input("Proxy:")
+    port = raw_input("Proxy Port:")
+
+    networkProxy = QtNetwork.QNetworkProxy(QtNetwork.QNetworkProxy.HttpProxy, proxy, int(port))
+    QtNetwork.QNetworkProxy.setApplicationProxy(networkProxy)
     launch()
