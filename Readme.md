@@ -1,5 +1,8 @@
 # ASDF Sextant
 
+> This is **A**daptable **S**eismic **D**ata **F**ormat - if you are looking for the **A**dvanced **S**cientific **D**ata **F**ormat, go here: https://asdf.readthedocs.io/en/latest/
+
+
 This is an experimental graphical user interface intended to enable the interactive exploration of ASDF files. It can mostly deal with earthquake event data sets and is currently not really suited to explore large noise data sets but we will add this capability in the near future.
 
 ![Imgur](http://i.imgur.com/dR6T2XE.png)
