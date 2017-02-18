@@ -589,7 +589,8 @@ class Window(QtGui.QMainWindow):
             self.ui.auxiliary_data_stacked_widget.setCurrentWidget(
                 self.ui.auxiliary_data_graph_page)
         # Files are a bit special.
-        elif len(aux_data.data.shape) == 1 and path[0] == "Files":
+        elif len(aux_data.data.shape) == 1 and \
+                path[0].lower() in ["file", "files"]:
             self.ui.auxiliary_file_browser.setPlainText(
                 aux_data.file.read().decode())
             self.ui.auxiliary_data_stacked_widget.setCurrentWidget(
