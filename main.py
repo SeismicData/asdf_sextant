@@ -582,19 +582,19 @@ class Window(QtGui.QMainWindow):
         group = self.ds.auxiliary_data["/".join(path)]
         aux_data = group[tag]
 
-        if len(aux_data.data.shape) == 1 and path[0] != "Files":
-            plot = graph.addPlot(title="%s/%s" % ("/".join(path), tag))
-            plot.show()
-            plot.plot(aux_data.data.value)
-            self.ui.auxiliary_data_stacked_widget.setCurrentWidget(
-                self.ui.auxiliary_data_graph_page)
         # Files are a bit special.
-        elif len(aux_data.data.shape) == 1 and \
+        if len(aux_data.data.shape) == 1 and \
                 path[0].lower() in ["file", "files"]:
             self.ui.auxiliary_file_browser.setPlainText(
                 aux_data.file.read().decode())
             self.ui.auxiliary_data_stacked_widget.setCurrentWidget(
                 self.ui.auxiliary_data_file_page)
+        elif len(aux_data.data.shape) == 1:
+            plot = graph.addPlot(title="%s/%s" % ("/".join(path), tag))
+            plot.show()
+            plot.plot(aux_data.data.value)
+            self.ui.auxiliary_data_stacked_widget.setCurrentWidget(
+                self.ui.auxiliary_data_graph_page)
         # 2D Shapes.
         elif len(aux_data.data.shape) == 2:
             img = pg.ImageItem(border="#3D8EC9")
