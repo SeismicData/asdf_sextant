@@ -597,13 +597,30 @@ class Window(QtGui.QMainWindow):
                 self.ui.auxiliary_data_graph_page)
         # 2D Shapes.
         elif len(aux_data.data.shape) == 2:
-            img = pg.ImageItem(border="#3D8EC9")
-            img.setImage(aux_data.data.value)
-            vb = graph.addViewBox()
-            vb.setAspectLocked(True)
-            vb.addItem(img)
-            self.ui.auxiliary_data_stacked_widget.setCurrentWidget(
-                self.ui.auxiliary_data_graph_page)
+            # If 6 or less components on the first dimensions and a lot on
+            # the second, assume its a 2D array of time series.
+            if aux_data.data.shape[0] <= 6 and aux_data.data.shape[1] >= 100:
+                first_plot = None
+                for _i in range(aux_data.data.shape[0]):
+                    plot = graph.addPlot(_i, 0)
+                    plot.plot(aux_data.data.value[_i])
+                    # Link plots.
+                    if _i == 0:
+                        first_plot = plot
+                    else:
+                        plot.setXLink(first_plot)
+                        plot.setYLink(first_plot)
+                self.ui.auxiliary_data_stacked_widget.setCurrentWidget(
+                    self.ui.auxiliary_data_graph_page)
+            # Otherwise assume its a 2D image.
+            else:
+                img = pg.ImageItem(border="#3D8EC9")
+                img.setImage(aux_data.data.value)
+                vb = graph.addViewBox()
+                vb.setAspectLocked(True)
+                vb.addItem(img)
+                self.ui.auxiliary_data_stacked_widget.setCurrentWidget(
+                    self.ui.auxiliary_data_graph_page)
         # Anything else is currently not supported.
         else:
             raise NotImplementedError

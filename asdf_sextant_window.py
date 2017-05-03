@@ -2,8 +2,7 @@
 
 # Form implementation generated from reading ui file '/Users/lion/workspace/code/asdf_sextant/asdf_sextant_window.ui'
 #
-# Created: Fri Sep 18 19:15:49 2015
-#      by: PyQt4 UI code generator 4.10.4
+# Created by: PyQt4 UI code generator 4.11.4
 #
 # WARNING! All changes made in this file will be lost!
 
@@ -261,5 +260,5 @@ class Ui_MainWindow(object):
 
 from PyQt4 import QtWebKit
 from pyqtgraph import GraphicsLayoutWidget
-from svg_graphics_view import SvgGraphicsView
 from station_tree_widget import StationTreeWidget
+from svg_graphics_view import SvgGraphicsView
