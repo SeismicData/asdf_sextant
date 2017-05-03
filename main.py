@@ -644,7 +644,12 @@ class Window(QtGui.QMainWindow):
 
         for _i, key in enumerate(sorted(aux_data.parameters.keys())):
             key_item = QtGui.QTableWidgetItem(key)
-            value_item = QtGui.QTableWidgetItem(str(aux_data.parameters[key]))
+            v = aux_data.parameters[key]
+            try:
+                v = v.decode()
+            except:
+                pass
+            value_item = QtGui.QTableWidgetItem(str(v))
 
             tv.setItem(_i, 0, key_item)
             tv.setItem(_i, 1, value_item)
