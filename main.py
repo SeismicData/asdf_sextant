@@ -199,6 +199,65 @@ class Window(QtGui.QMainWindow):
         self.ui.station_view.itemExited.connect(
             self.on_station_view_itemExited)
 
+    def open_file(self):
+        self.ds = pyasdf.ASDFDataSet(self.filename)
+
+        for station_id, coordinates in self.ds.get_all_coordinates().items():
+            if not coordinates:
+                continue
+            js_call = "addStation('{station_id}', {latitude}, {longitude})"
+            self.ui.web_view.page().mainFrame().evaluateJavaScript(
+                js_call.format(station_id=station_id,
+                               latitude=coordinates["latitude"],
+                               longitude=coordinates["longitude"]))
+
+        self.build_station_view_list()
+        self.build_event_tree_view()
+
+        # Add all the provenance items
+        self.provenance_list_model.clear()
+        for provenance in self.ds.provenance.list():
+            item = QtGui.QStandardItem(provenance)
+            self.provenance_list_model.appendRow(item)
+
+        # Also add the auxiliary data.
+
+        def recursive_tree(name, item):
+            if isinstance(item, pyasdf.utils.AuxiliaryDataAccessor):
+                data_type_item = QtGui.QTreeWidgetItem(
+                    [name],
+                    type=AUX_DATA_ITEM_TYPES["DATA_TYPE"])
+                children = []
+                for sub_item in item.list():
+                    children.append(recursive_tree(sub_item, item[sub_item]))
+                data_type_item.addChildren(children)
+            elif isinstance(item, pyasdf.utils.AuxiliaryDataContainer):
+                data_type_item = QtGui.QTreeWidgetItem(
+                    [name],
+                    type=AUX_DATA_ITEM_TYPES["DATA_ITEM"])
+            else:
+                raise NotImplementedError
+            return data_type_item
+
+        items = []
+        for data_type in self.ds.auxiliary_data.list():
+            items.append(recursive_tree(data_type,
+                                        self.ds.auxiliary_data[data_type]))
+        self.ui.auxiliary_data_tree_view.insertTopLevelItems(0, items)
+
+        sb = self.ui.status_bar
+        if hasattr(sb, "_widgets"):
+            for i in sb._widgets:
+                sb.removeWidget(i)
+
+        w = QtGui.QLabel("File: %s    (%s)" % (self.ds.filename,
+                                               self.ds.pretty_filesize))
+        sb._widgets = [w]
+        sb.addPermanentWidget(w)
+        w.show()
+        sb.show()
+        sb.reformat()
+
     def build_event_tree_view(self):
         if not hasattr(self, "ds") or not self.ds:
             return
@@ -424,65 +483,6 @@ class Window(QtGui.QMainWindow):
         self._state["file_open_dir"] = os.path.dirname(self.filename)
 
         self.open_file()
-
-    def open_file(self):
-        self.ds = pyasdf.ASDFDataSet(self.filename)
-
-        for station_id, coordinates in self.ds.get_all_coordinates().items():
-            if not coordinates:
-                continue
-            js_call = "addStation('{station_id}', {latitude}, {longitude})"
-            self.ui.web_view.page().mainFrame().evaluateJavaScript(
-                js_call.format(station_id=station_id,
-                               latitude=coordinates["latitude"],
-                               longitude=coordinates["longitude"]))
-
-        self.build_station_view_list()
-        self.build_event_tree_view()
-
-        # Add all the provenance items
-        self.provenance_list_model.clear()
-        for provenance in self.ds.provenance.list():
-            item = QtGui.QStandardItem(provenance)
-            self.provenance_list_model.appendRow(item)
-
-        # Also add the auxiliary data.
-
-        def recursive_tree(name, item):
-            if isinstance(item, pyasdf.utils.AuxiliaryDataAccessor):
-                data_type_item = QtGui.QTreeWidgetItem(
-                    [name],
-                    type=AUX_DATA_ITEM_TYPES["DATA_TYPE"])
-                children = []
-                for sub_item in item.list():
-                    children.append(recursive_tree(sub_item, item[sub_item]))
-                data_type_item.addChildren(children)
-            elif isinstance(item, pyasdf.utils.AuxiliaryDataContainer):
-                data_type_item = QtGui.QTreeWidgetItem(
-                    [name],
-                    type=AUX_DATA_ITEM_TYPES["DATA_ITEM"])
-            else:
-                raise NotImplementedError
-            return data_type_item
-
-        items = []
-        for data_type in self.ds.auxiliary_data.list():
-            items.append(recursive_tree(data_type,
-                                        self.ds.auxiliary_data[data_type]))
-        self.ui.auxiliary_data_tree_view.insertTopLevelItems(0, items)
-
-        sb = self.ui.status_bar
-        if hasattr(sb, "_widgets"):
-            for i in sb._widgets:
-                sb.removeWidget(i)
-
-        w = QtGui.QLabel("File: %s    (%s)" % (self.ds.filename,
-                                               self.ds.pretty_filesize))
-        sb._widgets = [w]
-        sb.addPermanentWidget(w)
-        w.show()
-        sb.show()
-        sb.reformat()
 
     def on_detrend_and_demean_check_box_stateChanged(self, state):
         self.update_waveform_plot()
@@ -787,7 +787,17 @@ def launch():
 
     # Launch and open the window.
     app = QtGui.QApplication(sys.argv, QtGui.QApplication.GuiClient)
+    # Does unfortunately not really work on OSX but maybe on other systems?
+    # OSX
+    app.setApplicationName("ASDF Sextant")
     app.setStyleSheet(qdarkstyle.load_stylesheet(pyside=False))
+
+    # Set the icon
+    app_icon = QtGui.QIcon()
+    app_icon.addFile(os.path.join(os.path.dirname(__file__), "icon.png"),
+                     QtCore.QSize(1024, 1024))
+    app.setWindowIcon(app_icon)
+
     window = Window()
 
     # Move window to center of screen.
