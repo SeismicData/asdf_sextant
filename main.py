@@ -139,6 +139,45 @@ class Window(QtGui.QMainWindow):
             pass
         self._tempfile = tmp[1] + ".svg"
 
+        # Install an event filter to intercept all drop events; also those
+        # on child events.
+        class EventFilter(QtCore.QObject):
+            def eventFilter(self, obj, event):
+                if not isinstance(event, (QtGui.QDragEnterEvent,
+                                          QtGui.QDragMoveEvent)):
+                    return False
+
+                def _get_filename(event):
+                    try:
+                        paths = [_i.path() for _i in event.mimeData().urls()]
+                    except:
+                        return False
+                    if len(paths) == 1 and os.path.isfile(paths[0]):
+                        return paths[0]
+                    return False
+
+                # We always only deal with HDF5 files.
+                filename = _get_filename(event)
+                if not filename or os.path.splitext(filename)[-1] != ".h5":
+                    return False
+
+                event.acceptProposedAction()
+                return True
+
+        filter = EventFilter(self)
+        self.installEventFilter(filter)
+
+        self.setAcceptDrops(True)
+
+    def dropEvent(self, event):
+        """
+        Enable drag and drop for ASDF files.
+        """
+        # The drag enter and move already assert that the file exists and
+        # that it ends with `.h5`.
+        self.filename = event.mimeData().urls()[0].path()
+        self.open_file()
+
     def __del__(self):
         try:
             os.remove(self._tempfile)
@@ -379,6 +418,9 @@ class Window(QtGui.QMainWindow):
         # dialogue is opened.
         self._state["file_open_dir"] = os.path.dirname(self.filename)
 
+        self.open_file()
+
+    def open_file(self):
         self.ds = pyasdf.ASDFDataSet(self.filename)
 
         for station_id, coordinates in self.ds.get_all_coordinates().items():
