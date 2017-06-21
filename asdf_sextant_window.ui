@@ -36,11 +36,23 @@
        <widget class="QPushButton" name="select_file_button">
         <property name="font">
          <font>
-          <pointsize>9</pointsize>
+          <pointsize>12</pointsize>
          </font>
         </property>
         <property name="text">
          <string>Open File</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="label">
+        <property name="font">
+         <font>
+          <pointsize>12</pointsize>
+         </font>
+        </property>
+        <property name="text">
+         <string>Or just drag &amp; drop an ASDF file into this window</string>
         </property>
        </widget>
       </item>
@@ -100,8 +112,8 @@
            </widget>
           </item>
           <item>
-           <widget class="QWebView" name="web_view">
-            <property name="url">
+           <widget class="QWebView" name="web_view" native="true">
+            <property name="url" stdset="0">
              <url>
               <string>about:blank</string>
              </url>
@@ -355,8 +367,8 @@
         <item>
          <layout class="QVBoxLayout" name="verticalLayout_5" stretch="1,1">
           <item>
-           <widget class="QWebView" name="events_web_view">
-            <property name="url">
+           <widget class="QWebView" name="events_web_view" native="true">
+            <property name="url" stdset="0">
              <url>
               <string>about:blank</string>
              </url>
