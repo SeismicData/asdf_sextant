@@ -124,7 +124,12 @@ class Window(QtGui.QMainWindow):
         self.ui.events_web_view.settings().setAttribute(
             QtWebKit.QWebSettings.DeveloperExtrasEnabled, True)
 
-        self._state = {}
+        self._state = {
+            # Initially open the file-open dialogue in the current working
+            # directory. For subsequent cases the parent dir of the
+            # previously chosen file will be used.
+            "file_open_dir": os.path.abspath(os.getcwd())
+        }
 
         tmp = tempfile.mkstemp("asdf_sextant")
         os.close(tmp[0])
@@ -365,10 +370,14 @@ class Window(QtGui.QMainWindow):
         """
         self.filename = str(QtGui.QFileDialog.getOpenFileName(
             parent=self, caption="Choose File",
-            directory=os.path.expanduser("~"),
+            directory=self._state["file_open_dir"],
             filter="ASDF files (*.h5)"))
         if not self.filename:
             return
+
+        # Open the parent dir of the current file the next time the file
+        # dialogue is opened.
+        self._state["file_open_dir"] = os.path.dirname(self.filename)
 
         self.ds = pyasdf.ASDFDataSet(self.filename)
 
