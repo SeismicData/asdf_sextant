@@ -124,6 +124,11 @@ class Window(QtGui.QMainWindow):
         self.ui.events_web_view.settings().setAttribute(
             QtWebKit.QWebSettings.DeveloperExtrasEnabled, True)
 
+        # Trial and error to find reasonable initial sizes of the splitters.
+        # This can probably be done in a simpler way but it appears to work.
+        self.ui.waveform_vertical_splitter.setSizes([10, 350])
+        self.ui.waveform_left_side_splitter.setSizes([30, 30])
+
         self._state = {
             # Initially open the file-open dialogue in the current working
             # directory. For subsequent cases the parent dir of the
