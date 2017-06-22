@@ -80,7 +80,7 @@
        <attribute name="title">
         <string notr="true">Waveforms</string>
        </attribute>
-       <layout class="QHBoxLayout" name="horizontalLayout_3">
+       <layout class="QHBoxLayout" name="horizontalLayout_13">
         <item>
          <widget class="QSplitter" name="waveform_vertical_splitter">
           <property name="orientation">
@@ -89,12 +89,48 @@
           <widget class="QWidget" name="">
            <layout class="QVBoxLayout" name="verticalLayout_3">
             <item>
-             <widget class="QCheckBox" name="group_by_network_check_box">
-              <property name="text">
-               <string>Group By Network</string>
+             <layout class="QHBoxLayout" name="horizontalLayout_3">
+              <item>
+               <widget class="QLabel" name="label_2">
+                <property name="text">
+                 <string>Open Files</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <spacer name="horizontalSpacer_5">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>40</width>
+                  <height>20</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item>
+               <widget class="QPushButton" name="close_file_button">
+                <property name="text">
+                 <string>Close File</string>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </item>
+            <item>
+             <widget class="QListWidget" name="open_files_list_widget">
+              <property name="minimumSize">
+               <size>
+                <width>0</width>
+                <height>125</height>
+               </size>
               </property>
-              <property name="checked">
-               <bool>true</bool>
+              <property name="font">
+               <font>
+                <pointsize>10</pointsize>
+               </font>
               </property>
              </widget>
             </item>

@@ -1,13 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-Graphical user interface for Instaseis.
+Graphical utility to visualize ASDF files.
 
 :copyright:
-    Lion Krischer (krischer@geophysik.uni-muenchen.de), 2013-2014
+    Lion Krischer (lion.krischer@gmail.com), 2013-2017
 :license:
-    GNU Lesser General Public License, Version 3 [non-commercial/academic use]
-    (http://www.gnu.org/copyleft/lgpl.html)
+    MIT
 """
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
@@ -17,6 +16,7 @@ import pyqtgraph as pg
 import qdarkstyle
 
 from glob import iglob
+import collections
 import imp
 import inspect
 import itertools
@@ -47,6 +47,11 @@ EVENT_VIEW_ITEM_TYPES = {
 AUX_DATA_ITEM_TYPES = {
     "DATA_TYPE": 0,
     "DATA_ITEM": 1}
+
+
+# Colors for the datasets.
+DATASET_COLORS = ["#CCCCCC","#32B165", "#A38CF4", "#CE8F31", "#F67088",
+                  "#38A7D0", "#96A331"]
 
 
 # Default to antialiased drawing.
@@ -97,6 +102,28 @@ def sizeof_fmt(num):
     return "%3.1f %s" % (num, "TB")
 
 
+def make_icon(colors, width=24, height=24):
+    """
+    Make a QIcon with all the desired colors.
+    """
+    pm = QtGui.QPixmap(width, height)
+    #pm.fill(QtGui.QColor(colors[0]))
+
+    p = QtGui.QPainter(pm)
+
+    # Draw stripes.
+    for _i, color in enumerate(colors):
+        x = int(round(_i * width / len(colors)))
+        y = 0
+        w = int(round((_i + 1) * width / len(colors))) - x
+        h = height
+        p.fillRect(x, y, w, h, QtGui.QColor(color))
+
+    p.end()
+
+    return QtGui.QIcon(pm)
+
+
 class Window(QtGui.QMainWindow):
     def __init__(self):
         QtGui.QMainWindow.__init__(self)
@@ -126,7 +153,7 @@ class Window(QtGui.QMainWindow):
 
         # Trial and error to find reasonable initial sizes of the splitters.
         # This can probably be done in a simpler way but it appears to work.
-        self.ui.waveform_vertical_splitter.setSizes([10, 350])
+        self.ui.waveform_vertical_splitter.setSizes([20, 250])
         self.ui.waveform_left_side_splitter.setSizes([30, 30])
 
         self._state = {
@@ -135,6 +162,8 @@ class Window(QtGui.QMainWindow):
             # previously chosen file will be used.
             "file_open_dir": os.path.abspath(os.getcwd())
         }
+
+        self._open_files = collections.OrderedDict()
 
         tmp = tempfile.mkstemp("asdf_sextant")
         os.close(tmp[0])
@@ -152,18 +181,19 @@ class Window(QtGui.QMainWindow):
                                           QtGui.QDragMoveEvent)):
                     return False
 
-                def _get_filename(event):
+                def _get_filenames(event):
                     try:
                         paths = [_i.path() for _i in event.mimeData().urls()]
                     except:
                         return False
-                    if len(paths) == 1 and os.path.isfile(paths[0]):
-                        return paths[0]
-                    return False
+                    for p in paths:
+                        if not os.path.isfile(p) or not p.endswith(".h5"):
+                            return False
+                    return paths
 
                 # We always only deal with HDF5 files.
-                filename = _get_filename(event)
-                if not filename or os.path.splitext(filename)[-1] != ".h5":
+                filenames = _get_filenames(event)
+                if not filenames:
                     return False
 
                 event.acceptProposedAction()
@@ -180,8 +210,9 @@ class Window(QtGui.QMainWindow):
         """
         # The drag enter and move already assert that the file exists and
         # that it ends with `.h5`.
-        self.filename = event.mimeData().urls()[0].path()
-        self.open_file()
+        filenames = [_i.path() for _i in event.mimeData().urls()]
+        for filename in filenames:
+            self.open_file(filename = filename)
 
     def __del__(self):
         try:
@@ -199,29 +230,78 @@ class Window(QtGui.QMainWindow):
         self.ui.station_view.itemExited.connect(
             self.on_station_view_itemExited)
 
-    def open_file(self):
-        self.ds = pyasdf.ASDFDataSet(self.filename)
-
-        for station_id, coordinates in self.ds.get_all_coordinates().items():
-            if not coordinates:
-                continue
-            js_call = "addStation('{station_id}', {latitude}, {longitude})"
-            self.ui.web_view.page().mainFrame().evaluateJavaScript(
-                js_call.format(station_id=station_id,
-                               latitude=coordinates["latitude"],
-                               longitude=coordinates["longitude"]))
-
-        self.build_station_view_list()
-        self.build_event_tree_view()
-
-        # Add all the provenance items
+    def _update(self):
+        # First try to reset everything.
+        self.ui.open_files_list_widget.clear()
+        # Remove all stations from the map.
+        self.ui.web_view.page().mainFrame().evaluateJavaScript(
+            "removeAllStations()")
+        # Same for the events
+        self.ui.events_web_view.page().mainFrame().evaluateJavaScript(
+            "removeAllEvents()")
+        # Clear provenance list.
         self.provenance_list_model.clear()
-        for provenance in self.ds.provenance.list():
+        # Clear station view list.
+        self.ui.station_view.clear()
+        # Clear all the events.
+        self.ui.events_text_browser.clear()
+        self.ui.event_tree_widget.clear()
+        # Last but not least of course also the auxiliary data.
+        self.ui.auxiliary_data_tree_view.clear()
+        self.ui.auxiliary_data_graph.clear()
+        self.ui.auxiliary_data_detail_table_view.clear()
+        self.ui.auxiliary_data_info_table_view.clear()
+        self.ui.auxiliary_file_browser.clear()
+        self.ui.show_auxiliary_provenance_button.setEnabled(False)
+
+        # Collect all coordinates.
+        all_coordinates = {}
+
+        for filename, info in self._open_files.items():
+            # First fill the open files list.
+            _f = filename.split(os.sep)
+            text = "[%s] %s" % (
+                info["ds"].pretty_filesize,
+                # Shortened absolute path.
+                "/".join([_i[:1] for _i in _f[:-1]] + _f[-1:]))
+
+            item = QtGui.QListWidgetItem(
+                make_icon(colors=[info["color"]]), text)
+            # Make it non-selectable.
+            item.setFlags(QtCore.Qt.ItemIsEnabled)
+
+            self.ui.open_files_list_widget.addItem(item)
+
+            # Add station coordinates.
+            for k, v  in info["contents"].items():
+                if "coordinates" in v:
+                    all_coordinates[k] = v["coordinates"]
+
+        # Add all stations to the map.
+        for k, c in all_coordinates.items():
+            js_call = "addStation('{station_id}', {latitude}, {longitude})"
+            if "latitude" not in c or "longitude" not in c:
+                continue
+            self.ui.web_view.page().mainFrame().evaluateJavaScript(
+                js_call.format(station_id=k,
+                               latitude=c["latitude"],
+                               longitude=c["longitude"]))
+
+        # Add provenance.
+        prov = set()
+        for v in self._open_files.values():
+            for p in v["provenance"]:
+                prov.add(p)
+        prov = sorted(prov)
+        for provenance in sorted(prov):
             item = QtGui.QStandardItem(provenance)
             self.provenance_list_model.appendRow(item)
 
-        # Also add the auxiliary data.
+        # Show station and event lists.
+        self.build_station_view_list()
+        self.build_event_tree_view()
 
+        # Also add the auxiliary data.
         def recursive_tree(name, item):
             if isinstance(item, pyasdf.utils.AuxiliaryDataAccessor):
                 data_type_item = QtGui.QTreeWidgetItem(
@@ -239,35 +319,77 @@ class Window(QtGui.QMainWindow):
                 raise NotImplementedError
             return data_type_item
 
-        items = []
-        for data_type in self.ds.auxiliary_data.list():
-            items.append(recursive_tree(data_type,
-                                        self.ds.auxiliary_data[data_type]))
-        self.ui.auxiliary_data_tree_view.insertTopLevelItems(0, items)
+        file_items = []
 
-        sb = self.ui.status_bar
-        if hasattr(sb, "_widgets"):
-            for i in sb._widgets:
-                sb.removeWidget(i)
+        for filename, info in self._open_files.items():
+            items = []
+            for data_type in info["ds"].auxiliary_data.list():
+                items.append(recursive_tree(
+                    data_type,
+                    info["ds"].auxiliary_data[data_type]))
+            if not items:
+                continue
+            f = QtGui.QTreeWidgetItem(
+                [filename])
+            f.setIcon(0, make_icon([info["color"]]))
+            f.addChildren(items)
+            file_items.append(f)
 
-        w = QtGui.QLabel("File: %s    (%s)" % (self.ds.filename,
-                                               self.ds.pretty_filesize))
-        sb._widgets = [w]
-        sb.addPermanentWidget(w)
-        w.show()
-        sb.show()
-        sb.reformat()
+        if file_items:
+            self.ui.auxiliary_data_tree_view.insertTopLevelItems(0, file_items)
+
+    def open_file(self, filename):
+        # Don't open again.
+        if filename in self._open_files:
+            return
+        ds = pyasdf.ASDFDataSet(filename)
+
+        station_info = {}
+
+        for station in ds.waveforms:
+            info = {}
+
+            try:
+                info["coordinates"] = station.coordinates
+            except pyasdf.exceptions.NoStationXMLForStation:
+                pass
+
+            info["waveform_tags"] = station.get_waveform_tags()
+            info["has_stationxml"] = "StationXML" in station
+
+            station_info[station._station_name] = info
+
+        # Get the first unused dataset color.
+        used_colors = [_i["color"] for _i in self._open_files.values()]
+        for color in DATASET_COLORS:
+            if color in used_colors:
+                continue
+            break
+
+        self._open_files[filename] = {
+            "ds": ds,
+            "color": color,
+            "contents": station_info,
+            "provenance": ds.provenance.list(),
+            "events": ds.events
+        }
+
+        self._update()
 
     def build_event_tree_view(self):
-        if not hasattr(self, "ds") or not self.ds:
-            return
-        self.events = self.ds.events
+        events = {}
+        for v in self._open_files.values():
+            for event in v["events"]:
+                res_id = str(event.resource_id)
+                if res_id in events:
+                    continue
+                events[res_id] = event
         self.ui.event_tree_widget.clear()
 
         items = []
         self._state["quake_ids"] = {}
 
-        for event in self.events:
+        for event in events.values():
             if event.origins:
                 org = event.preferred_origin() or event.origins[0]
 
@@ -322,77 +444,117 @@ class Window(QtGui.QMainWindow):
         self.ui.event_tree_widget.insertTopLevelItems(0, items)
 
     def build_station_view_list(self):
-        if not hasattr(self, "ds") or not self.ds:
+        if not self._open_files:
             return
         self.ui.station_view.clear()
 
+        # Merge stations.
+        all_stations = {}
+        for info in self._open_files.values():
+            for station_name, v in info["contents"].items():
+                if station_name in all_stations:
+                    s = all_stations[station_name]
+                else:
+                    s = collections.defaultdict(list)
+                for tag in v["waveform_tags"]:
+                    s[tag].append({"color": info["color"], "ds": info["ds"]})
+
+                if "has_stationxml" in v:
+                    s["StationXML"].append({"color": info["color"]})
+
+                all_stations[station_name] = s
+
+        # Sort is important for the group-by operation to work correctly.
+        all_stations = sorted(all_stations.items(), key=lambda x: x[0])
+
         items = []
+        for key, group in itertools.groupby(
+                all_stations,
+                key=lambda x: x[0].split(".")[0]):
 
-        if self.ui.group_by_network_check_box.isChecked():
-            for key, group in itertools.groupby(
-                    self.ds.waveforms,
-                    key=lambda x: x._station_name.split(".")[0]):
-                network_item = QtGui.QTreeWidgetItem(
-                    [key],
-                    type=STATION_VIEW_ITEM_TYPES["NETWORK"])
-                group = sorted(group, key=lambda x: x._station_name)
-                for station in sorted(group, key=lambda x: x._station_name):
-                    station_item = QtGui.QTreeWidgetItem([
-                        station._station_name.split(".")[-1]],
-                        type=STATION_VIEW_ITEM_TYPES["STATION"])
+            network_item = QtGui.QTreeWidgetItem(
+                [key],
+                type=STATION_VIEW_ITEM_TYPES["NETWORK"])
+            all_colors_for_network = set()
+            group = sorted(group, key=lambda x: x[0])
 
-                    # Add children.
-                    children = []
-                    if "StationXML" in station.list():
-                        children.append(
-                            QtGui.QTreeWidgetItem(
-                                ["StationXML"],
-                                type=STATION_VIEW_ITEM_TYPES["STATIONXML"]))
-                    for waveform in station.get_waveform_tags():
-                        children.append(
-                            QtGui.QTreeWidgetItem(
-                                [waveform],
-                                type=STATION_VIEW_ITEM_TYPES["WAVEFORM"]))
-                    station_item.addChildren(children)
-
-                    network_item.addChild(station_item)
-                items.append(network_item)
-
-        else:
-            # Add all the waveforms and stations.
-            for station in self.ds.waveforms:
-                item = QtGui.QTreeWidgetItem(
-                    [station._station_name],
+            for name, content in group:
+                station_item = QtGui.QTreeWidgetItem([
+                    name.split(".")[-1]],
                     type=STATION_VIEW_ITEM_TYPES["STATION"])
 
-                # Add children.
-                children = []
-                if "StationXML" in station.list():
-                    children.append(
-                        QtGui.QTreeWidgetItem(
-                            ["StationXML"],
-                            type=STATION_VIEW_ITEM_TYPES["STATIONXML"]))
-                for waveform in station.get_waveform_tags():
-                    children.append(
-                        QtGui.QTreeWidgetItem(
-                            [waveform],
-                            type=STATION_VIEW_ITEM_TYPES["WAVEFORM"]))
-                item.addChildren(children)
+                all_colors_for_station = set()
 
-                items.append(item)
+                children = []
+                content = sorted(content.items(), key=lambda x: x[0])
+                # First StationXML.
+                for tag, info in content:
+                    if tag != "StationXML":
+                        continue
+                    c = [_i["color"] for _i in info]
+                    all_colors_for_station.update(c)
+                    icon = make_icon(colors=c)
+                    children.append(
+                        QtGui.QTreeWidgetItem(
+                            [tag],
+                            type=STATION_VIEW_ITEM_TYPES["STATIONXML"]))
+                    children[-1].setIcon(0, icon)
+                # Then the rest - sorry for being lazy.
+                for tag, info in content:
+                    if tag == "StationXML":
+                        continue
+                    c = [_i["color"] for _i in info]
+                    all_colors_for_station.update(c)
+                    icon = make_icon(colors=c)
+                    children.append(
+                        QtGui.QTreeWidgetItem(
+                            [tag],
+                            type=STATION_VIEW_ITEM_TYPES["WAVEFORM"]))
+                    children[-1].setIcon(0, icon)
+                station_item.addChildren(children)
+                station_item.setIcon(0, make_icon(all_colors_for_station))
+                all_colors_for_network.update(all_colors_for_station)
+
+                network_item.addChild(station_item)
+            network_item.setIcon(0, make_icon(all_colors_for_network))
+            items.append(network_item)
 
         self.ui.station_view.insertTopLevelItems(0, items)
+
+    def on_close_file_button_released(self):
+        popup = QtGui.QMenu()
+
+        for filename, info in self._open_files.items():
+            def get_action_fct():
+                _filename = filename
+                def _action(check):
+                    del self._open_files[_filename]["ds"]
+                    del self._open_files[_filename]
+                    self._update()
+                return _action
+
+            # Bind with a closure.
+            popup.addAction(
+                make_icon([info["color"]]),
+                "Close %s" % filename).triggered.connect(get_action_fct())
+
+        popup.exec_(self.ui.close_file_button.parentWidget().mapToGlobal(
+            self.ui.close_file_button.pos()))
 
     def on_reset_view_push_button_released(self):
         self.reset_view()
 
     def show_provenance_for_id(self, prov_id):
-        try:
-            info = \
-                self.ds.provenance.get_provenance_document_for_id(prov_id)
-        except ASDFValueError as e:
+        for v in self._open_files.values():
+            try:
+                info = v["ds"].provenance.get_provenance_document_for_id(
+                    prov_id)
+                break
+            except:
+                pass
+        else:
             msg_box = QtGui.QMessageBox()
-            msg_box.setText(e.args[0])
+            msg_box.setText("Could not find provenance document.")
             msg_box.exec_()
             return
 
@@ -426,63 +588,69 @@ class Window(QtGui.QMainWindow):
             self._state["current_auxiliary_data_provenance_id"])
 
     def on_references_push_button_released(self):
-        if "current_station_object" not in self._state:
+        if "current_station_objects" not in self._state:
             return
-        obj = self._state["current_station_object"]
+        objects = self._state["current_station_objects"]
 
-        popup = QtGui.QMenu()
+        main_popup = QtGui.QMenu()
 
-        for waveform in obj.list():
-            if not waveform.endswith(
-                    "__" + self._state["current_waveform_tag"]):
-                continue
-            menu = popup.addMenu(waveform)
-            attributes = dict(
-                self.ds._waveform_group[obj._station_name][waveform].attrs)
-
-            for key, value in sorted([_i for _i in attributes.items()],
-                                     key=lambda x: x[0]):
-                if not key.endswith("_id"):
+        for filename, obj in objects.items():
+            ds = self._open_files[filename]["ds"]
+            popup = main_popup.addMenu(
+                make_icon([self._open_files[filename]["color"]]),
+                filename)
+            for waveform in obj.list():
+                if not waveform.endswith(
+                        "__" + self._state["current_waveform_tag"]):
                     continue
-                key = key[:-3].capitalize()
+                menu = popup.addMenu(waveform)
+                attributes = dict(
+                    ds._waveform_group[obj._station_name][waveform].attrs)
 
-                try:
-                    value = value.decode()
-                except:
-                    pass
+                for key, value in sorted([_i for _i in attributes.items()],
+                                         key=lambda x: x[0]):
+                    if not key.endswith("_id"):
+                        continue
+                    key = key[:-3].capitalize()
 
-                def get_action_fct():
-                    _key = key
-                    _value = value
+                    try:
+                        value = value.decode()
+                    except:
+                        pass
 
-                    def _action(check):
-                        self.show_referenced_object(_key, _value)
+                    def get_action_fct():
+                        _key = key
+                        _value = value
 
-                    return _action
+                        def _action(check):
+                            self.show_referenced_object(_key, _value)
 
-                # Bind with a closure.
-                menu.addAction("%s: %s" % (key, value)).triggered.connect(
-                    get_action_fct())
+                        return _action
 
-        popup.exec_(self.ui.references_push_button.parentWidget().mapToGlobal(
-                    self.ui.references_push_button.pos()))
+                    # Bind with a closure.
+                    menu.addAction("%s: %s" % (key, value)).triggered.connect(
+                        get_action_fct())
+
+        main_popup.exec_(
+            self.ui.references_push_button.parentWidget().mapToGlobal(
+            self.ui.references_push_button.pos()))
 
     def on_select_file_button_released(self):
         """
         Fill the station tree widget upon opening a new file.
         """
-        self.filename = str(QtGui.QFileDialog.getOpenFileName(
+        filename = str(QtGui.QFileDialog.getOpenFileName(
             parent=self, caption="Choose File",
             directory=self._state["file_open_dir"],
             filter="ASDF files (*.h5)"))
-        if not self.filename:
+        if not filename:
             return
 
         # Open the parent dir of the current file the next time the file
         # dialogue is opened.
-        self._state["file_open_dir"] = os.path.dirname(self.filename)
+        self._state["file_open_dir"] = os.path.dirname(filename)
 
-        self.open_file()
+        self.open_file(filename)
 
     def on_detrend_and_demean_check_box_stateChanged(self, state):
         self.update_waveform_plot()
@@ -518,45 +686,63 @@ class Window(QtGui.QMainWindow):
         min_values = []
         max_values = []
 
-        self._state["waveform_plots"] = []
-        for _i, tr in enumerate(temp_st):
+
+        self._state["waveform_plots"] = collections.OrderedDict()
+
+        # Plot per component!
+        components = sorted(set(tr.stats.channel[-1] for tr in temp_st))
+        for _i, component in enumerate(components):
+            st = [tr for tr in temp_st if tr.stats.channel[-1] == component]
             plot = self.ui.graph.addPlot(
-                _i, 0, title=tr.id,
+                _i, 0, title=st[0].id,
                 axisItems={'bottom': DateAxisItem(orientation='bottom',
                                                   utcOffset=0)})
             plot.show()
-            self._state["waveform_plots"].append(plot)
-            plot.plot(tr.times() + tr.stats.starttime.timestamp, tr.data)
-            starttimes.append(tr.stats.starttime)
-            endtimes.append(tr.stats.endtime)
-            min_values.append(tr.data.min())
-            max_values.append(tr.data.max())
+            self._state["waveform_plots"][component] = plot
+            for tr in st:
+                plot.plot(tr.times() + tr.stats.starttime.timestamp, tr.data,
+                          pen=QtGui.QColor(tr.stats.__color))
+                starttimes.append(tr.stats.starttime)
+                endtimes.append(tr.stats.endtime)
+                min_values.append(tr.data.min())
+                max_values.append(tr.data.max())
 
         self._state["waveform_plots_min_time"] = min(starttimes)
         self._state["waveform_plots_max_time"] = max(endtimes)
         self._state["waveform_plots_min_value"] = min(min_values)
         self._state["waveform_plots_max_value"] = max(max_values)
 
-        for plot in self._state["waveform_plots"][1:]:
-            plot.setXLink(self._state["waveform_plots"][0])
-            plot.setYLink(self._state["waveform_plots"][0])
+        wf = list(self._state["waveform_plots"].values())
+        for plot in wf[1:]:
+            plot.setXLink(wf[0])
+            plot.setYLink(wf[0])
 
         self.reset_view()
 
     def reset_view(self):
-        self._state["waveform_plots"][0].setXRange(
-            self._state["waveform_plots_min_time"].timestamp,
-            self._state["waveform_plots_max_time"].timestamp)
+        wf = list(self._state["waveform_plots"].values())[0]
+
+        wf.setXRange(self._state["waveform_plots_min_time"].timestamp,
+                     self._state["waveform_plots_max_time"].timestamp)
         min_v = self._state["waveform_plots_min_value"]
         max_v = self._state["waveform_plots_max_value"]
 
         y_range = max_v - min_v
         min_v -= 0.1 * y_range
         max_v += 0.1 * y_range
-        self._state["waveform_plots"][0].setYRange(min_v, max_v)
+        wf.setYRange(min_v, max_v)
 
     def show_provenance_document(self, document_name):
-        doc = self.ds.provenance[document_name]
+        for v in self._open_files.values():
+            if document_name in v["ds"].provenance:
+                doc = v["ds"].provenance[document_name]
+                break
+        else:
+            msg_box = QtGui.QMessageBox()
+            msg_box.setText("Could not find provenance document.")
+            msg_box.exec_()
+            return
+
         doc.plot(filename=self._tempfile, use_labels=True)
 
         self.ui.provenance_graphics_view.open_file(self._tempfile)
@@ -576,12 +762,42 @@ class Window(QtGui.QMainWindow):
             pass
         elif t == STATION_VIEW_ITEM_TYPES["STATIONXML"]:
             station = get_station(item)
-            self.ds.waveforms[station].StationXML.plot_response(0.001)
+
+            for v in self._open_files.values():
+                if station in v["contents"] and \
+                        v["contents"][station]["has_stationxml"]:
+                    try:
+                        v["ds"].waveforms[station].StationXML.plot_response(
+                            0.001)
+                    except:
+                        continue
+                    break
+            else:
+                msg_box = QtGui.QMessageBox()
+                msg_box.setText("Could not find StationXML document.")
+                msg_box.exec_()
+                return
+
         elif t == STATION_VIEW_ITEM_TYPES["WAVEFORM"]:
             station = get_station(item)
-            self._state["current_station_object"] = self.ds.waveforms[station]
-            self._state["current_waveform_tag"] = item.text(0)
-            self.st = self.ds.waveforms[station][item.text(0)].sort()
+            tag = item.text(0)
+            self._state["current_waveform_tag"] = tag
+
+            self._state["current_station_objects"] = {}
+            st = obspy.Stream()
+            for filename, info in self._open_files.items():
+                if station not in info["ds"].waveforms:
+                    continue
+                _station = info["ds"].waveforms[station]
+                self._state["current_station_objects"][filename] = _station
+                if tag not in _station:
+                    continue
+                # Store the color for each trace.
+                _st = _station[tag]
+                for tr in _st:
+                    tr.stats.__color = info["color"]
+                st += _st
+            self.st = st
             self.update_waveform_plot()
         else:
             pass
@@ -597,7 +813,10 @@ class Window(QtGui.QMainWindow):
 
         obj = res_id.get_referred_object()
         if obj is None:
-            self.events = self.ds.events
+            msg_box = QtGui.QMessageBox()
+            msg_box.setText("Did not find the correct event.")
+            msg_box.exec_()
+            return
         self.ui.events_text_browser.setPlainText(
             str(res_id.get_referred_object()))
 
@@ -632,10 +851,15 @@ class Window(QtGui.QMainWindow):
         path = recursive_path(item)
         path.reverse()
 
+        filename = path[0]
+        path = path[1:]
+
         graph = self.ui.auxiliary_data_graph
         graph.clear()
 
-        group = self.ds.auxiliary_data["/".join(path)]
+        ds = self._open_files[filename]["ds"]
+
+        group = ds.auxiliary_data["/".join(path)]
         aux_data = group[tag]
 
         # Files are a bit special.

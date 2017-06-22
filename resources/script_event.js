@@ -22,6 +22,14 @@ function addEvent(event_id, latitude, longitude) {
 }
 
 
+function removeAllEvents() {
+    _.forEach(events, function(value, key) {
+        map.removeLayer(value.marker);
+    });
+    events = {};
+}
+
+
 function setMarkerActive(value) {
     if (value.marker.status != "active") {
         value.marker.setStyle({color: "#DB3340"});

@@ -34,6 +34,13 @@ function addStation(station_id, latitude, longitude) {
     setMarkerInactive(marker);
 }
 
+function removeAllStations() {
+    _.forEach(stations, function(value, key) {
+        map.removeLayer(value.marker);
+    });
+    stations = {};
+}
+
 
 function setMarkerActive(value) {
     if (value.marker.status != "active") {
