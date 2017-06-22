@@ -26,7 +26,6 @@ import tempfile
 
 import obspy.core.event
 import pyasdf
-from pyasdf.exceptions import ASDFValueError
 
 from DateAxisItem import DateAxisItem
 
@@ -50,7 +49,7 @@ AUX_DATA_ITEM_TYPES = {
 
 
 # Colors for the datasets.
-DATASET_COLORS = ["#CCCCCC","#32B165", "#A38CF4", "#CE8F31", "#F67088",
+DATASET_COLORS = ["#CCCCCC", "#32B165", "#A38CF4", "#CE8F31", "#F67088",
                   "#38A7D0", "#96A331"]
 
 
@@ -107,8 +106,6 @@ def make_icon(colors, width=24, height=24):
     Make a QIcon with all the desired colors.
     """
     pm = QtGui.QPixmap(width, height)
-    #pm.fill(QtGui.QColor(colors[0]))
-
     p = QtGui.QPainter(pm)
 
     # Draw stripes.
@@ -212,7 +209,7 @@ class Window(QtGui.QMainWindow):
         # that it ends with `.h5`.
         filenames = [_i.path() for _i in event.mimeData().urls()]
         for filename in filenames:
-            self.open_file(filename = filename)
+            self.open_file(filename=filename)
 
     def __del__(self):
         try:
@@ -273,7 +270,7 @@ class Window(QtGui.QMainWindow):
             self.ui.open_files_list_widget.addItem(item)
 
             # Add station coordinates.
-            for k, v  in info["contents"].items():
+            for k, v in info["contents"].items():
                 if "coordinates" in v:
                     all_coordinates[k] = v["coordinates"]
 
@@ -527,6 +524,7 @@ class Window(QtGui.QMainWindow):
         for filename, info in self._open_files.items():
             def get_action_fct():
                 _filename = filename
+
                 def _action(check):
                     del self._open_files[_filename]["ds"]
                     del self._open_files[_filename]
@@ -633,7 +631,7 @@ class Window(QtGui.QMainWindow):
 
         main_popup.exec_(
             self.ui.references_push_button.parentWidget().mapToGlobal(
-            self.ui.references_push_button.pos()))
+                self.ui.references_push_button.pos()))
 
     def on_select_file_button_released(self):
         """
@@ -685,7 +683,6 @@ class Window(QtGui.QMainWindow):
         endtimes = []
         min_values = []
         max_values = []
-
 
         self._state["waveform_plots"] = collections.OrderedDict()
 
