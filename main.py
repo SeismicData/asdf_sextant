@@ -348,7 +348,7 @@ class Window(QtGui.QMainWindow):
 
             try:
                 info["coordinates"] = station.coordinates
-            except pyasdf.exceptions.NoStationXMLForStation:
+            except:
                 pass
 
             info["waveform_tags"] = station.get_waveform_tags()
