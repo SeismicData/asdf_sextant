@@ -28,6 +28,7 @@ import obspy.core.event
 import pyasdf
 
 from DateAxisItem import DateAxisItem
+from python_syntax_highlighting import PythonHighlighter
 
 
 # Enums only exists in Python 3 and we don't really need them here...
@@ -157,7 +158,18 @@ class Window(QtGui.QMainWindow):
             # Initially open the file-open dialogue in the current working
             # directory. For subsequent cases the parent dir of the
             # previously chosen file will be used.
-            "file_open_dir": os.path.abspath(os.getcwd())
+            "file_open_dir": os.path.abspath(os.getcwd()),
+            "custom_processing_script": (
+                "# This function will modify each waveform stream. It must\n"
+                "# be called process() and it takes three arguments: \n"
+                "#\n"
+                "# * st: The obspy.Stream object with the waveforms.\n"
+                "# * inv: The obspy.Inventory object with the metadata.\n"
+                "# * tag: The name of the currently selected tag.\n\n"
+                "import numpy as np\n\n\n"
+                "def process(st, inv, tag):\n"
+                "    # Do whatever you want in here, but return st.\n"
+                "    return st")
         }
 
         self._open_files = collections.OrderedDict()
@@ -539,6 +551,17 @@ class Window(QtGui.QMainWindow):
         popup.exec_(self.ui.close_file_button.parentWidget().mapToGlobal(
             self.ui.close_file_button.pos()))
 
+    def on_custom_processing_push_button_released(self):
+        new_processing_script, ok = ProcessingScriptDialog.edit(
+            self._state["custom_processing_script"])
+
+        # If cancel or something else has been pressed, just return
+        if ok is not True:
+            return
+
+        self._state["custom_processing_script"] = new_processing_script
+        self.update_waveform_plot()
+
     def on_reset_view_push_button_released(self):
         self.reset_view()
 
@@ -650,6 +673,9 @@ class Window(QtGui.QMainWindow):
 
         self.open_file(filename)
 
+    def on_custom_processing_check_box_stateChanged(self, state):
+        self.update_waveform_plot()
+
     def on_detrend_and_demean_check_box_stateChanged(self, state):
         self.update_waveform_plot()
 
@@ -660,6 +686,9 @@ class Window(QtGui.QMainWindow):
         self.build_station_view_list()
 
     def update_waveform_plot(self):
+        if not hasattr(self, "st"):
+            return
+
         self.ui.reset_view_push_button.setEnabled(True)
 
         # Get the filter settings.
@@ -670,12 +699,34 @@ class Window(QtGui.QMainWindow):
 
         temp_st = self.st.copy()
 
-        if filter_settings["detrend_and_demean"]:
-            temp_st.detrend("linear")
-            temp_st.detrend("demean")
+        if self.ui.custom_processing_check_box.isChecked():
+            # Load code.
+            _d = _DynamicModule()
+            _d.load(self._state["custom_processing_script"])
+            processing_function = _d.process
 
-        if filter_settings["normalize"]:
-            temp_st.normalize()
+            # Try to find the stationxml file.
+            inv = None
+            for station_object in \
+                    self._state["current_station_objects"].values():
+                try:
+                    inv = station_object.StationXML
+                    break
+                except:
+                    pass
+
+            # Execute it.
+            temp_st = processing_function(
+                st=temp_st,
+                inv=inv,
+                tag=self._state["current_waveform_tag"])
+        else:
+            if filter_settings["detrend_and_demean"]:
+                temp_st.detrend("linear")
+                temp_st.detrend("demean")
+
+            if filter_settings["normalize"]:
+                temp_st.normalize()
 
         self.ui.graph.clear()
 
@@ -1000,6 +1051,82 @@ class Window(QtGui.QMainWindow):
     def on_station_view_itemExited(self, *args):
         js_call = "setAllInactive()"
         self.ui.web_view.page().mainFrame().evaluateJavaScript(js_call)
+
+
+class NoTabQPlainTextEdit(QtGui.QPlainTextEdit):
+    def __init__(self, *args, **kwargs):
+        super(NoTabQPlainTextEdit, self).__init__(*args, **kwargs)
+
+        self.textChanged.connect(self.on_text_changed)
+
+    def keyPressEvent(self, key):
+        if key.text() == "\t":
+            self.insertPlainText("    ")
+        else:
+            super(NoTabQPlainTextEdit, self).keyPressEvent(key)
+
+    def on_text_changed(self, *args):
+        # Convert all tabs to spaces - will be called for example on text
+        # pasting.
+        txt = self.toPlainText()
+        if "\t" in txt:
+            txt = txt.replace("\t", "    ")
+            self.setPlainText(txt)
+
+
+class ProcessingScriptDialog(QtGui.QDialog):
+    def __init__(self, parent=None, script=""):
+        super(ProcessingScriptDialog, self).__init__(parent)
+        self.resize(800, 500)
+
+        self.setWindowTitle("Edit Custom Processing Script")
+
+        layout = QtGui.QVBoxLayout(self)
+
+        label = QtGui.QLabel("Edit this script for flexible custom "
+                             "processing using all of ObsPy and the Python "
+                             "ecosystem!")
+        layout.addWidget(label)
+
+        self.editor = NoTabQPlainTextEdit()
+
+        self.hl = PythonHighlighter(self.editor.document())
+        self.editor.setPlainText(script)
+
+        layout.addWidget(self.editor)
+
+        # OK and Cancel buttons
+        buttons = QtGui.QDialogButtonBox(
+            QtGui.QDialogButtonBox.Ok | QtGui.QDialogButtonBox.Cancel,
+            QtCore.Qt.Horizontal, self)
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        layout.addWidget(buttons)
+
+    def get_script(self):
+        return str(self.editor.toPlainText())
+
+    # static method to create the dialog and return (date, time, accepted)
+    @staticmethod
+    def edit(script, parent=None):
+        dialog = ProcessingScriptDialog(parent=parent, script=script)
+        result = dialog.exec_()
+        return (dialog.get_script(), result == QtGui.QDialog.Accepted)
+
+
+class _DynamicModule(object):
+    """
+    From https://stackoverflow.com/a/5371449.
+    """
+    def load(self, code):
+        execdict = {}  # optional, to increase safety
+        exec(code, execdict)
+        keys = execdict.get(
+            '__all__',  # use __all__ attribute if defined
+            # else all non-private attributes
+            (key for key in execdict if not key.startswith('_')))
+        for key in keys:
+            setattr(self, key, execdict[key])
 
 
 def launch():
