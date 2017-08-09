@@ -24,6 +24,7 @@ import os
 import sys
 import tempfile
 
+import numpy as np
 from obspy.core import AttribDict
 import obspy.core.event
 import pyasdf
@@ -923,7 +924,27 @@ class Window(QtGui.QMainWindow):
         elif len(aux_data.data.shape) == 1:
             plot = graph.addPlot(title="%s/%s" % ("/".join(path), tag))
             plot.show()
-            plot.plot(aux_data.data.value)
+
+            npts = len(aux_data.data)
+            t = np.arange(npts)
+            if path[0].lower() in ["crosscorrelation", "crosscorrelations",
+                                   "xcorr", "xcorrs", "corr", "corrs",
+                                   "correlation", "correlations"]:
+                dt_names = ["dt", "delta", "sample_spacing", "sample_interval"]
+                dt_names += [_i.upper() for _i in dt_names]
+                dt_names += [_i.capitalize() for _i in dt_names]
+
+                dt = None
+                for key in dt_names:
+                    if key in aux_data.parameters:
+                        dt = aux_data.parameters[key]
+                        break
+                if dt:
+                    length = (npts - 1) * dt
+                    t = np.linspace(- length / 2.0, length / 2.0, npts)
+                    plot.setLabel(axis="bottom", text="Lag Time [s]")
+
+            plot.plot(t, aux_data.data.value)
             self.ui.auxiliary_data_stacked_widget.setCurrentWidget(
                 self.ui.auxiliary_data_graph_page)
         # 2D Shapes.
