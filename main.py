@@ -24,6 +24,7 @@ import os
 import sys
 import tempfile
 
+from obspy.core import AttribDict
 import obspy.core.event
 import pyasdf
 
@@ -844,6 +845,8 @@ class Window(QtGui.QMainWindow):
                 _st = _station[tag]
                 for tr in _st:
                     tr.stats.__color = info["color"]
+                    tr.stats.sextant = AttribDict()
+                    tr.stats.sextant.filename = filename
                 st += _st
             self.st = st
             self.update_waveform_plot()
