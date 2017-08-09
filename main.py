@@ -21,6 +21,8 @@ import imp
 import inspect
 import itertools
 import os
+import platform
+import subprocess
 import sys
 import tempfile
 
@@ -124,6 +126,46 @@ def make_icon(colors, width=24, height=24):
     return QtGui.QIcon(pm)
 
 
+__filename_memoization_dict = {}
+
+
+def resolve_filename(filename):
+    """
+    Resolves filename.
+
+    Really only needed for some version of OSX that return posix files ids
+    for the drop events.
+
+    :param filename: The filename to resolve.
+    """
+    # The osascript call might be expensive - cache it.
+    if filename not in __filename_memoization_dict:
+        # Only affects OSX.
+        if platform.system().lower() != "darwin":
+            return filename
+
+        # Only resolve file ids.
+        if "/.file/id" not in filename:
+            return filename
+
+        # This is slow and complicated but appears to be the most reasonable
+        # solution.
+        process = subprocess.Popen(
+            ["osascript", "-e", "get posix path of my posix file "
+                                "\"file://%s\" -- kthx. bai" % filename],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        out, err = process.communicate()
+        # Might fail for any number of reasons.
+        if process.returncode != 0:
+            __filename_memoization_dict[filename] = filename
+            return filename
+        if hasattr(out, "decode"):
+            out = out.decode()
+        __filename_memoization_dict[filename] = out.strip()
+
+    return __filename_memoization_dict[filename]
+
+
 class Window(QtGui.QMainWindow):
     def __init__(self):
         QtGui.QMainWindow.__init__(self)
@@ -194,7 +236,8 @@ class Window(QtGui.QMainWindow):
 
                 def _get_filenames(event):
                     try:
-                        paths = [_i.path() for _i in event.mimeData().urls()]
+                        paths = [resolve_filename(_i.path())
+                                 for _i in event.mimeData().urls()]
                     except:
                         return False
                     for p in paths:
@@ -221,7 +264,8 @@ class Window(QtGui.QMainWindow):
         """
         # The drag enter and move already assert that the file exists and
         # that it ends with `.h5`.
-        filenames = [_i.path() for _i in event.mimeData().urls()]
+        filenames = [resolve_filename(_i.path())
+                     for _i in event.mimeData().urls()]
         for filename in filenames:
             self.open_file(filename=filename)
 
