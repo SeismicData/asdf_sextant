@@ -17,9 +17,9 @@ This is an experimental graphical user interface intended to enable the interact
 
 The GUI has the following dependencies:
 
-* `Python 2.7, 3.3, or 3.4`
+* `Python 2.7, 3.4, 3.5, or 3.6`
 * `pyasdf`
-* `PyQt`
+* `PyQt 4`
 * `pyqtgraph`
 * `qdarkstyle`
 * `pydot`
@@ -32,20 +32,8 @@ http://seismicdata.github.io/pyasdf/installation.html
 and install the remaining dependencies with:
 
 ```bash
-$ conda install pyqt
-$ pip install pyqtgraph qdarkstyle
-```
-
-Under Python 2, install `pydot` with:
-
-```bash
-$ pip install pydot
-```
-
-`pydot` has no proper Python 3  packages, thus do:
-
-```bash
-$ pip install https://github.com/nlhepler/pydot/archive/master.zip
+$ conda install pyqt==4.11.4 pyqtgraph pydotplus
+$ pip install qdarkstyle
 ```
 
 #### graphviz
@@ -57,14 +45,6 @@ $ sudo apt-get install graphviz  # Debian/Ubuntu
 $ brew install graphviz          # OSX with Homebrew
 ```
 
-
-#### Pyqtgraph Bug
-
-There is a bug in the current version of pyqtgraph that shows an extra axis. Not a major issue, but annoying. You can fix your local version by applying this patch:
-
-https://github.com/pyqtgraph/pyqtgraph/commit/9df4df55c49ace05020e6b7c52128fdce09e2a8d
-
-Alternatively, you can just install pyqtgraph from the latest Github master.
 
 ### GUI
 
