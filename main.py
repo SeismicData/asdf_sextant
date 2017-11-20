@@ -397,7 +397,7 @@ class Window(QtGui.QMainWindow):
         # Don't open again.
         if filename in self._open_files:
             return
-        ds = pyasdf.ASDFDataSet(filename)
+        ds = pyasdf.ASDFDataSet(filename, mode="r")
 
         station_info = {}
 
