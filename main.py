@@ -421,11 +421,16 @@ class Window(QtGui.QMainWindow):
                 continue
             break
 
+        try:
+            prov = ds.provenance.list()
+        except KeyError:
+            prov = []
+
         self._open_files[filename] = {
             "ds": ds,
             "color": color,
             "contents": station_info,
-            "provenance": ds.provenance.list(),
+            "provenance": prov,
             "events": ds.events
         }
 
@@ -965,11 +970,14 @@ class Window(QtGui.QMainWindow):
                 aux_data.file.read().decode())
             self.ui.auxiliary_data_stacked_widget.setCurrentWidget(
                 self.ui.auxiliary_data_file_page)
-        elif len(aux_data.data.shape) == 1:
+        elif len(aux_data.data.shape) == 1 or \
+                sum(aux_data.data.shape[1:]) == len(aux_data.data.shape) - 1:
             plot = graph.addPlot(title="%s/%s" % ("/".join(path), tag))
             plot.show()
 
-            npts = len(aux_data.data)
+            data = aux_data.data.value.ravel()
+
+            npts = len(data)
             t = np.arange(npts)
             if path[0].lower() in ["crosscorrelation", "crosscorrelations",
                                    "xcorr", "xcorrs", "corr", "corrs",
@@ -988,7 +996,7 @@ class Window(QtGui.QMainWindow):
                     t = np.linspace(- length / 2.0, length / 2.0, npts)
                     plot.setLabel(axis="bottom", text="Lag Time [s]")
 
-            plot.plot(t, aux_data.data.value)
+            plot.plot(t, data)
             self.ui.auxiliary_data_stacked_widget.setCurrentWidget(
                 self.ui.auxiliary_data_graph_page)
         # 2D Shapes.
