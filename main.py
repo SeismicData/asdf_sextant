@@ -378,7 +378,12 @@ class Window(QtGui.QMainWindow):
 
         for filename, info in self._open_files.items():
             items = []
-            for data_type in info["ds"].auxiliary_data.list():
+            # Deal with a missing auxiliary group.
+            try:
+                aux_items = info["ds"].auxiliary_data.list()
+            except KeyError:
+                aux_items = []
+            for data_type in aux_items:
                 items.append(recursive_tree(
                     data_type,
                     info["ds"].auxiliary_data[data_type]))
