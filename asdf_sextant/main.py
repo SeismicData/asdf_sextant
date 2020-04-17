@@ -963,7 +963,7 @@ class Window(QtGui.QMainWindow):
         else:
             pass
 
-    @QtCore.Slot()
+    @QtCore.Slot(QtGui.QTreeWidgetItem, int)
     def on_event_tree_widget_itemClicked(self, item, column):
         t = item.type()
         if t not in EVENT_VIEW_ITEM_TYPES.values():
@@ -998,7 +998,7 @@ class Window(QtGui.QMainWindow):
         #     js_call
         # )
 
-    @QtCore.Slot()
+    @QtCore.Slot(QtGui.QTreeWidgetItem, int)
     def on_auxiliary_data_tree_view_itemClicked(self, item, column):
         t = item.type()
         if t != AUX_DATA_ITEM_TYPES["DATA_ITEM"]:
@@ -1047,7 +1047,7 @@ class Window(QtGui.QMainWindow):
             plot = graph.addPlot(title="%s/%s" % ("/".join(path), tag))
             plot.show()
 
-            data = aux_data.data.value.ravel()
+            data = aux_data.data[()].ravel()
 
             npts = len(data)
             t = np.arange(npts)
@@ -1168,7 +1168,7 @@ class Window(QtGui.QMainWindow):
             tv.setItem(_i, 0, key_item)
             tv.setItem(_i, 1, value_item)
 
-    @QtCore.Slot()
+    @QtCore.Slot(QtCore.QModelIndex)
     def on_provenance_list_view_clicked(self, model_index):
         # Compat for different pyqt/sip versions.
         try:
