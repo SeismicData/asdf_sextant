@@ -9,7 +9,7 @@ Graphical utility to visualize ASDF files.
     MIT
 """
 from PySide2 import QtGui, QtCore
-from PySide2.QtWidgets import QDesktopWidget
+from PySide2.QtWidgets import QDesktopWidget, QTreeWidgetItem
 import pyqtgraph as pg
 import qdarkstyle
 
@@ -281,13 +281,15 @@ class Window(QtGui.QMainWindow):
         # First try to reset everything.
         self.ui.open_files_list_widget.clear()
         # Remove all stations from the map.
-        self.ui.web_engine_view.page().mainFrame().evaluateJavaScript(
-            "removeAllStations()"
-        )
+        # XXX: Uncomment
+        # self.ui.web_engine_view.page().mainFrame().evaluateJavaScript(
+        #     "removeAllStations()"
+        # )
         # Same for the events
-        self.ui.events_web_engine_view.page().mainFrame().evaluateJavaScript(
-            "removeAllEvents()"
-        )
+        # XXX: Uncomment
+        # self.ui.events_web_engine_view.page().mainFrame().evaluateJavaScript(
+        #    "removeAllEvents()"
+        # )
         # Clear provenance list.
         self.provenance_list_model.clear()
         # Clear station view list.
@@ -333,13 +335,14 @@ class Window(QtGui.QMainWindow):
             js_call = "addStation('{station_id}', {latitude}, {longitude})"
             if "latitude" not in c or "longitude" not in c:
                 continue
-            self.ui.web_engine_view.page().mainFrame().evaluateJavaScript(
-                js_call.format(
-                    station_id=k,
-                    latitude=c["latitude"],
-                    longitude=c["longitude"],
-                )
-            )
+            # XXX: Uncomment
+            # self.ui.web_engine_view.page().mainFrame().evaluateJavaScript(
+            #     js_call.format(
+            #         station_id=k,
+            #         latitude=c["latitude"],
+            #         longitude=c["longitude"],
+            #     )
+            # )
 
         # Add provenance.
         prov = set()
@@ -463,9 +466,10 @@ class Window(QtGui.QMainWindow):
                     latitude=org.latitude,
                     longitude=org.longitude,
                 )
-                self.ui.events_web_engine_view.page().mainFrame().evaluateJavaScript(  # NOQA
-                    js_call
-                )
+                # XXX: Uncomment
+                # self.ui.events_web_engine_view.page().mainFrame().evaluateJavaScript(  # NOQA
+                #     js_call
+                # )
 
             event_item = QtGui.QTreeWidgetItem(
                 [event.resource_id.id], type=EVENT_VIEW_ITEM_TYPES["EVENT"]
@@ -599,6 +603,7 @@ class Window(QtGui.QMainWindow):
 
         self.ui.station_view.insertTopLevelItems(0, items)
 
+    @QtCore.Slot()
     def on_close_file_button_released(self):
         popup = QtGui.QMenu()
 
@@ -625,6 +630,7 @@ class Window(QtGui.QMainWindow):
             )
         )
 
+    @QtCore.Slot()
     def on_custom_processing_push_button_released(self):
         new_processing_script, ok = ProcessingScriptDialog.edit(
             self._state["custom_processing_script"]
@@ -637,6 +643,7 @@ class Window(QtGui.QMainWindow):
         self._state["custom_processing_script"] = new_processing_script
         self.update_waveform_plot()
 
+    @QtCore.Slot()
     def on_reset_view_push_button_released(self):
         self.reset_view()
 
@@ -677,6 +684,7 @@ class Window(QtGui.QMainWindow):
 
         self.ui.central_tab.setCurrentWidget(self.ui.event_tab)
 
+    @QtCore.Slot()
     def on_show_auxiliary_provenance_button_released(self):
         if (
             "current_auxiliary_data_provenance_id" not in self._state
@@ -687,6 +695,7 @@ class Window(QtGui.QMainWindow):
             self._state["current_auxiliary_data_provenance_id"]
         )
 
+    @QtCore.Slot()
     def on_references_push_button_released(self):
         if "current_station_objects" not in self._state:
             return
@@ -741,6 +750,7 @@ class Window(QtGui.QMainWindow):
             )
         )
 
+    @QtCore.Slot()
     def on_select_file_button_released(self):
         """
         Fill the station tree widget upon opening a new file.
@@ -762,15 +772,19 @@ class Window(QtGui.QMainWindow):
 
         self.open_file(filename)
 
+    @QtCore.Slot()
     def on_custom_processing_check_box_stateChanged(self, state):
         self.update_waveform_plot()
 
+    @QtCore.Slot()
     def on_detrend_and_demean_check_box_stateChanged(self, state):
         self.update_waveform_plot()
 
+    @QtCore.Slot()
     def on_normalize_check_box_stateChanged(self, state):
         self.update_waveform_plot()
 
+    @QtCore.Slot()
     def on_group_by_network_check_box_stateChanged(self, state):
         self.build_station_view_list()
 
@@ -894,6 +908,7 @@ class Window(QtGui.QMainWindow):
 
         self.ui.provenance_graphics_view.open_file(self._tempfile)
 
+    @QtCore.Slot(QTreeWidgetItem, int)
     def on_station_view_itemClicked(self, item, column):
         t = item.type()
 
@@ -954,6 +969,7 @@ class Window(QtGui.QMainWindow):
         else:
             pass
 
+    @QtCore.Slot()
     def on_event_tree_widget_itemClicked(self, item, column):
         t = item.type()
         if t not in EVENT_VIEW_ITEM_TYPES.values():
@@ -983,10 +999,12 @@ class Window(QtGui.QMainWindow):
             event = str(item.parent().parent().text(0))
 
         js_call = "highlightEvent('{event_id}');".format(event_id=event)
-        self.ui.events_web_engine_view.page().mainFrame().evaluateJavaScript(
-            js_call
-        )
+        # XXX: Uncomment
+        # self.ui.events_web_engine_view.page().mainFrame().evaluateJavaScript(
+        #     js_call
+        # )
 
+    @QtCore.Slot()
     def on_auxiliary_data_tree_view_itemClicked(self, item, column):
         t = item.type()
         if t != AUX_DATA_ITEM_TYPES["DATA_ITEM"]:
@@ -1156,6 +1174,7 @@ class Window(QtGui.QMainWindow):
             tv.setItem(_i, 0, key_item)
             tv.setItem(_i, 1, value_item)
 
+    @QtCore.Slot()
     def on_provenance_list_view_clicked(self, model_index):
         # Compat for different pyqt/sip versions.
         try:
@@ -1165,6 +1184,7 @@ class Window(QtGui.QMainWindow):
 
         self.show_provenance_document(data)
 
+    @QtCore.Slot(QTreeWidgetItem)
     def on_station_view_itemEntered(self, item):
         t = item.type()
 
@@ -1182,33 +1202,39 @@ class Window(QtGui.QMainWindow):
         if t == STATION_VIEW_ITEM_TYPES["NETWORK"]:
             network = item.text(0)
             js_call = "highlightNetwork('{network}')".format(network=network)
-            self.ui.web_engine_view.page().mainFrame().evaluateJavaScript(
-                js_call
-            )
+            # XXX: Uncomment
+            # self.ui.web_engine_view.page().mainFrame().evaluateJavaScript(
+            #     js_call
+            # )
         elif t == STATION_VIEW_ITEM_TYPES["STATION"]:
             station = get_station(item, parent=False)
             js_call = "highlightStation('{station}')".format(station=station)
-            self.ui.web_engine_view.page().mainFrame().evaluateJavaScript(
-                js_call
-            )
+            # XXX: Uncomment
+            # self.ui.web_engine_view.page().mainFrame().evaluateJavaScript(
+            #     js_call
+            # )
         elif t == STATION_VIEW_ITEM_TYPES["STATIONXML"]:
             station = get_station(item)
             js_call = "highlightStation('{station}')".format(station=station)
-            self.ui.web_engine_view.page().mainFrame().evaluateJavaScript(
-                js_call
-            )
+            # XXX: Uncomment
+            # self.ui.web_engine_view.page().mainFrame().evaluateJavaScript(
+            #     js_call
+            # )
         elif t == STATION_VIEW_ITEM_TYPES["WAVEFORM"]:
             station = get_station(item)
             js_call = "highlightStation('{station}')".format(station=station)
-            self.ui.web_engine_view.page().mainFrame().evaluateJavaScript(
-                js_call
-            )
+            # XXX: Uncomment
+            # self.ui.web_engine_view.page().mainFrame().evaluateJavaScript(
+            #     js_call
+            # )
         else:
             pass
 
+    @QtCore.Slot()
     def on_station_view_itemExited(self, *args):
         js_call = "setAllInactive()"
-        self.ui.web_engine_view.page().mainFrame().evaluateJavaScript(js_call)
+        # XXX: Uncomment
+        # self.ui.web_engine_view.page().mainFrame().evaluateJavaScript(js_call)
 
 
 class NoTabQPlainTextEdit(QtGui.QPlainTextEdit):
@@ -1223,6 +1249,7 @@ class NoTabQPlainTextEdit(QtGui.QPlainTextEdit):
         else:
             super(NoTabQPlainTextEdit, self).keyPressEvent(key)
 
+    @QtCore.Slot()
     def on_text_changed(self, *args):
         # Convert all tabs to spaces - will be called for example on text
         # pasting.

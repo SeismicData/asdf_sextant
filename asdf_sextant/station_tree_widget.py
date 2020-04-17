@@ -2,8 +2,8 @@ from PySide2 import QtGui, QtCore
 
 
 class StationTreeWidget(QtGui.QTreeWidget):
-    # cellExited = QtCore.pyqtSignal(int, int)
-    # itemExited = QtCore.pyqtSignal(QtGui.QTreeWidgetItem)
+    cellExited = QtCore.Signal(int, int)
+    itemExited = QtCore.Signal(QtGui.QTreeWidgetItem)
 
     def __init__(self, *args, **kwargs):
         QtGui.QTreeWidget.__init__(self, *args, **kwargs)
