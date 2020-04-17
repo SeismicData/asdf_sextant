@@ -8,15 +8,12 @@ Graphical utility to visualize ASDF files.
 :license:
     MIT
 """
-from PySide2 import QtGui, QtCore, QtWebEngine
+from PySide2 import QtGui, QtCore
 from PySide2.QtWidgets import QDesktopWidget
 import pyqtgraph as pg
 import qdarkstyle
 
-from glob import iglob
 import collections
-import imp
-import inspect
 import itertools
 import os
 import platform
@@ -230,7 +227,7 @@ class Window(QtGui.QMainWindow):
                             resolve_filename(_i.path())
                             for _i in event.mimeData().urls()
                         ]
-                    except:
+                    except Exception:
                         return False
                     for p in paths:
                         if not os.path.isfile(p) or not p.endswith(".h5"):
@@ -414,7 +411,7 @@ class Window(QtGui.QMainWindow):
 
             try:
                 info["coordinates"] = station.coordinates
-            except:
+            except Exception:
                 pass
 
             info["waveform_tags"] = station.get_waveform_tags()
@@ -461,12 +458,12 @@ class Window(QtGui.QMainWindow):
             if event.origins:
                 org = event.preferred_origin() or event.origins[0]
 
-                js_call = "addEvent('{event_id}', {latitude}, {longitude});".format(
+                js_call = "addEvent('{event_id}', {latitude}, {longitude});".format(  # NOQA
                     event_id=event.resource_id.id,
                     latitude=org.latitude,
                     longitude=org.longitude,
                 )
-                self.ui.events_web_engine_view.page().mainFrame().evaluateJavaScript(
+                self.ui.events_web_engine_view.page().mainFrame().evaluateJavaScript(  # NOQA
                     js_call
                 )
 
@@ -650,7 +647,7 @@ class Window(QtGui.QMainWindow):
                     prov_id
                 )
                 break
-            except:
+            except Exception:
                 pass
         else:
             msg_box = QtGui.QMessageBox()
@@ -721,7 +718,7 @@ class Window(QtGui.QMainWindow):
 
                     try:
                         value = value.decode()
-                    except:
+                    except Exception:
                         pass
 
                     def get_action_fct():
@@ -806,7 +803,7 @@ class Window(QtGui.QMainWindow):
                 try:
                     inv = station_object.StationXML
                     break
-                except:
+                except Exception:
                     pass
 
             # Execute it.
@@ -922,7 +919,7 @@ class Window(QtGui.QMainWindow):
                         v["ds"].waveforms[station].StationXML.plot_response(
                             0.001
                         )
-                    except:
+                    except Exception:
                         continue
                     break
             else:
@@ -1125,7 +1122,7 @@ class Window(QtGui.QMainWindow):
             v = aux_data.parameters[key]
             try:
                 v = v.decode()
-            except:
+            except Exception:
                 pass
             value_item = QtGui.QTableWidgetItem(str(v))
 
@@ -1163,7 +1160,7 @@ class Window(QtGui.QMainWindow):
         # Compat for different pyqt/sip versions.
         try:
             data = str(model_index.data().toString())
-        except:
+        except Exception:
             data = str(model_index.data())
 
         self.show_provenance_document(data)
