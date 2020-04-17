@@ -28,9 +28,9 @@ from obspy.core import AttribDict
 import obspy.core.event
 import pyasdf
 
-from DateAxisItem import DateAxisItem
-import asdf_sextant_window
-from python_syntax_highlighting import PythonHighlighter
+from .DateAxisItem import DateAxisItem
+from . import asdf_sextant_window
+from .python_syntax_highlighting import PythonHighlighter
 
 
 # Enums only exists in Python 3 and we don't really need them here...

@@ -482,12 +482,12 @@
   <customwidget>
    <class>SvgGraphicsView</class>
    <extends>QGraphicsView</extends>
-   <header>svg_graphics_view.h</header>
+   <header>.svg_graphics_view.h</header>
   </customwidget>
   <customwidget>
    <class>StationTreeWidget</class>
    <extends>QTreeWidget</extends>
-   <header>station_tree_widget.h</header>
+   <header>.station_tree_widget.h</header>
   </customwidget>
  </customwidgets>
  <resources/>
