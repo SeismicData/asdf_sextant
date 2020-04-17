@@ -9,7 +9,7 @@ Graphical utility to visualize ASDF files.
     MIT
 """
 from PySide2 import QtGui, QtCore
-from PySide2.QtWidgets import QDesktopWidget, QTreeWidgetItem
+from PySide2.QtWidgets import QDesktopWidget
 import pyqtgraph as pg
 import qdarkstyle
 
@@ -772,21 +772,17 @@ class Window(QtGui.QMainWindow):
 
         self.open_file(filename)
 
-    @QtCore.Slot()
+    @QtCore.Slot(int)
     def on_custom_processing_check_box_stateChanged(self, state):
         self.update_waveform_plot()
 
-    @QtCore.Slot()
+    @QtCore.Slot(int)
     def on_detrend_and_demean_check_box_stateChanged(self, state):
         self.update_waveform_plot()
 
-    @QtCore.Slot()
+    @QtCore.Slot(int)
     def on_normalize_check_box_stateChanged(self, state):
         self.update_waveform_plot()
-
-    @QtCore.Slot()
-    def on_group_by_network_check_box_stateChanged(self, state):
-        self.build_station_view_list()
 
     def update_waveform_plot(self):
         if not hasattr(self, "st"):
@@ -908,7 +904,7 @@ class Window(QtGui.QMainWindow):
 
         self.ui.provenance_graphics_view.open_file(self._tempfile)
 
-    @QtCore.Slot(QTreeWidgetItem, int)
+    @QtCore.Slot(QtGui.QTreeWidgetItem, int)
     def on_station_view_itemClicked(self, item, column):
         t = item.type()
 
@@ -1184,7 +1180,7 @@ class Window(QtGui.QMainWindow):
 
         self.show_provenance_document(data)
 
-    @QtCore.Slot(QTreeWidgetItem)
+    @QtCore.Slot(QtGui.QTreeWidgetItem)
     def on_station_view_itemEntered(self, item):
         t = item.type()
 
