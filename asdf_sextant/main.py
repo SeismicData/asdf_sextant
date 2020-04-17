@@ -211,7 +211,7 @@ class Window(QtGui.QMainWindow):
         os.close(tmp[0])
         try:
             os.remove(tmp[1])
-        except:
+        except Exception:
             pass
         self._tempfile = tmp[1] + ".svg"
 
@@ -265,7 +265,7 @@ class Window(QtGui.QMainWindow):
     def __del__(self):
         try:
             os.remove(self._tempfile)
-        except:
+        except Exception:
             pass
 
     def __connect_signal_and_slots(self):
