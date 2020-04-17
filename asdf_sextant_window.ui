@@ -155,7 +155,7 @@
                 </property>
                </column>
               </widget>
-              <widget class="QWebView" name="web_view" native="true">
+              <widget class="QWebEngineView" name="web_engine_view" native="true">
                <property name="url" stdset="0">
                 <url>
                  <string>about:blank</string>
@@ -440,7 +440,7 @@
         <item>
          <layout class="QVBoxLayout" name="verticalLayout_5" stretch="1,1">
           <item>
-           <widget class="QWebView" name="events_web_view" native="true">
+           <widget class="QWebEngineView" name="events_web_engine_view" native="true">
             <property name="url" stdset="0">
              <url>
               <string>about:blank</string>
@@ -470,9 +470,9 @@
  </widget>
  <customwidgets>
   <customwidget>
-   <class>QWebView</class>
+   <class>QWebEngineView</class>
    <extends>QWidget</extends>
-   <header>QtWebKit/QWebView</header>
+   <header>QtWebEngineWidgets/QWebEngineView</header>
   </customwidget>
   <customwidget>
    <class>GraphicsLayoutWidget</class>

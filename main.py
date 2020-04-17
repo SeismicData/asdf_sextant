@@ -4,18 +4,11 @@
 Graphical utility to visualize ASDF files.
 
 :copyright:
-    Lion Krischer (lion.krischer@gmail.com), 2013-2017
+    Lion Krischer (lion.krischer@gmail.com), 2013-2020
 :license:
     MIT
 """
-from __future__ import (
-    absolute_import,
-    division,
-    print_function,
-    unicode_literals,
-)
-
-from PyQt4 import QtGui, QtCore, QtWebKit
+from PySide2 import QtGui, QtCore, QtWebEngine
 import pyqtgraph as pg
 import qdarkstyle
 
@@ -36,6 +29,7 @@ import obspy.core.event
 import pyasdf
 
 from DateAxisItem import DateAxisItem
+import asdf_sextant_window
 from python_syntax_highlighting import PythonHighlighter
 
 
@@ -68,39 +62,6 @@ DATASET_COLORS = [
 pg.setConfigOptions(
     antialias=True, foreground=(200, 200, 200), background=None
 )
-
-
-def compile_and_import_ui_files():
-    """
-    Automatically compiles all .ui files found in the same directory as the
-    application py file.
-    They will have the same name as the .ui files just with a .py extension.
-
-    Needs to be defined in the same file as function loading the gui as it
-    modifies the globals to be able to automatically import the created py-ui
-    files. Its just very convenient.
-    """
-    directory = os.path.dirname(
-        os.path.abspath(inspect.getfile(inspect.currentframe()))
-    )
-    for filename in iglob(os.path.join(directory, "*.ui")):
-        ui_file = filename
-        py_ui_file = os.path.splitext(ui_file)[0] + os.path.extsep + "py"
-        if not os.path.exists(py_ui_file) or (
-            os.path.getmtime(ui_file) >= os.path.getmtime(py_ui_file)
-        ):
-            from PyQt4 import uic
-
-            print("Compiling ui file: %s" % ui_file)
-            with open(py_ui_file, "w") as open_file:
-                uic.compileUi(ui_file, open_file)
-        # Import the (compiled) file.
-        try:
-            import_name = os.path.splitext(os.path.basename(py_ui_file))[0]
-            globals()[import_name] = imp.load_source(import_name, py_ui_file)
-        except ImportError as e:
-            print("Error importing %s" % py_ui_file)
-            print(e.message)
 
 
 def sizeof_fmt(num):
@@ -185,7 +146,6 @@ def resolve_filename(filename):
 class Window(QtGui.QMainWindow):
     def __init__(self):
         QtGui.QMainWindow.__init__(self)
-        # Injected by the compile_and_import_ui_files() function.
         self.ui = asdf_sextant_window.Ui_MainWindow()  # NOQA
         self.ui.setupUi(self)
 
@@ -198,11 +158,12 @@ class Window(QtGui.QMainWindow):
         map_file = os.path.abspath(
             os.path.join(os.path.dirname(__file__), "resources/index.html")
         )
-        self.ui.web_view.load(QtCore.QUrl.fromLocalFile(map_file))
+        self.ui.web_engine_view.load(QtCore.QUrl.fromLocalFile(map_file))
         # Enable debugging of the web view.
-        self.ui.web_view.settings().setAttribute(
-            QtWebKit.QWebSettings.DeveloperExtrasEnabled, True
-        )
+        # XXX: Uncomment
+        # self.ui.web_engine_view.settings().setAttribute(
+        #     QtWebEngine.QWebSettings.DeveloperExtrasEnabled, True
+        # )
 
         # Event view.
         map_file = os.path.abspath(
@@ -210,11 +171,14 @@ class Window(QtGui.QMainWindow):
                 os.path.dirname(__file__), "resources/index_event.html"
             )
         )
-        self.ui.events_web_view.load(QtCore.QUrl.fromLocalFile(map_file))
-        # Enable debugging of the web view.
-        self.ui.events_web_view.settings().setAttribute(
-            QtWebKit.QWebSettings.DeveloperExtrasEnabled, True
+        self.ui.events_web_engine_view.load(
+            QtCore.QUrl.fromLocalFile(map_file)
         )
+        # Enable debugging of the web view.
+        # XXX: Uncomment
+        # self.ui.events_web_engine_view.settings().setAttribute(
+        #     QtWebEngine.QWebSettings.DeveloperExtrasEnabled, True
+        # )
 
         # Trial and error to find reasonable initial sizes of the splitters.
         # This can probably be done in a simpler way but it appears to work.
@@ -319,11 +283,11 @@ class Window(QtGui.QMainWindow):
         # First try to reset everything.
         self.ui.open_files_list_widget.clear()
         # Remove all stations from the map.
-        self.ui.web_view.page().mainFrame().evaluateJavaScript(
+        self.ui.web_engine_view.page().mainFrame().evaluateJavaScript(
             "removeAllStations()"
         )
         # Same for the events
-        self.ui.events_web_view.page().mainFrame().evaluateJavaScript(
+        self.ui.events_web_engine_view.page().mainFrame().evaluateJavaScript(
             "removeAllEvents()"
         )
         # Clear provenance list.
@@ -371,7 +335,7 @@ class Window(QtGui.QMainWindow):
             js_call = "addStation('{station_id}', {latitude}, {longitude})"
             if "latitude" not in c or "longitude" not in c:
                 continue
-            self.ui.web_view.page().mainFrame().evaluateJavaScript(
+            self.ui.web_engine_view.page().mainFrame().evaluateJavaScript(
                 js_call.format(
                     station_id=k,
                     latitude=c["latitude"],
@@ -501,7 +465,7 @@ class Window(QtGui.QMainWindow):
                     latitude=org.latitude,
                     longitude=org.longitude,
                 )
-                self.ui.events_web_view.page().mainFrame().evaluateJavaScript(
+                self.ui.events_web_engine_view.page().mainFrame().evaluateJavaScript(
                     js_call
                 )
 
@@ -1021,7 +985,9 @@ class Window(QtGui.QMainWindow):
             event = str(item.parent().parent().text(0))
 
         js_call = "highlightEvent('{event_id}');".format(event_id=event)
-        self.ui.events_web_view.page().mainFrame().evaluateJavaScript(js_call)
+        self.ui.events_web_engine_view.page().mainFrame().evaluateJavaScript(
+            js_call
+        )
 
     def on_auxiliary_data_tree_view_itemClicked(self, item, column):
         t = item.type()
@@ -1218,25 +1184,33 @@ class Window(QtGui.QMainWindow):
         if t == STATION_VIEW_ITEM_TYPES["NETWORK"]:
             network = item.text(0)
             js_call = "highlightNetwork('{network}')".format(network=network)
-            self.ui.web_view.page().mainFrame().evaluateJavaScript(js_call)
+            self.ui.web_engine_view.page().mainFrame().evaluateJavaScript(
+                js_call
+            )
         elif t == STATION_VIEW_ITEM_TYPES["STATION"]:
             station = get_station(item, parent=False)
             js_call = "highlightStation('{station}')".format(station=station)
-            self.ui.web_view.page().mainFrame().evaluateJavaScript(js_call)
+            self.ui.web_engine_view.page().mainFrame().evaluateJavaScript(
+                js_call
+            )
         elif t == STATION_VIEW_ITEM_TYPES["STATIONXML"]:
             station = get_station(item)
             js_call = "highlightStation('{station}')".format(station=station)
-            self.ui.web_view.page().mainFrame().evaluateJavaScript(js_call)
+            self.ui.web_engine_view.page().mainFrame().evaluateJavaScript(
+                js_call
+            )
         elif t == STATION_VIEW_ITEM_TYPES["WAVEFORM"]:
             station = get_station(item)
             js_call = "highlightStation('{station}')".format(station=station)
-            self.ui.web_view.page().mainFrame().evaluateJavaScript(js_call)
+            self.ui.web_engine_view.page().mainFrame().evaluateJavaScript(
+                js_call
+            )
         else:
             pass
 
     def on_station_view_itemExited(self, *args):
         js_call = "setAllInactive()"
-        self.ui.web_view.page().mainFrame().evaluateJavaScript(js_call)
+        self.ui.web_engine_view.page().mainFrame().evaluateJavaScript(js_call)
 
 
 class NoTabQPlainTextEdit(QtGui.QPlainTextEdit):
@@ -1322,15 +1296,12 @@ class _DynamicModule(object):
 
 
 def launch():
-    # Automatically compile all ui files if they have been changed.
-    compile_and_import_ui_files()
-
     # Launch and open the window.
-    app = QtGui.QApplication(sys.argv, QtGui.QApplication.GuiClient)
+    app = QtGui.QApplication(sys.argv)
     # Does unfortunately not really work on OSX but maybe on other systems?
     # OSX
     app.setApplicationName("ASDF Sextant")
-    app.setStyleSheet(qdarkstyle.load_stylesheet(pyside=False))
+    app.setStyleSheet(qdarkstyle.load_stylesheet_pyside2())
 
     # Set the icon
     app_icon = QtGui.QIcon()
@@ -1343,9 +1314,10 @@ def launch():
     window = Window()
 
     # Move window to center of screen.
-    window.move(
-        app.desktop().screen().rect().center() - window.rect().center()
-    )
+    # XXX: Uncomment
+    # window.move(
+    #     app.desktop().screen().rect().center() - window.rect().center()
+    # )
 
     # Show and bring window to foreground.
     window.show()

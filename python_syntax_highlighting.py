@@ -1,8 +1,8 @@
 # Modified from
 # https://wiki.python.org/moin/PyQt/Python%20syntax%20highlighting
 
-from PyQt4.QtCore import QRegExp
-from PyQt4.QtGui import QColor, QTextCharFormat, QFont, QSyntaxHighlighter
+from PySide2.QtCore import QRegExp
+from PySide2.QtGui import QColor, QTextCharFormat, QFont, QSyntaxHighlighter
 
 
 def format(color, style=""):
