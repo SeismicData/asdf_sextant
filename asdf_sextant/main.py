@@ -1298,12 +1298,13 @@ class _DynamicModule(object):
 def launch():
     # Launch and open the window.
     app = QtGui.QApplication(sys.argv)
-    # Does unfortunately not really work on OSX but maybe on other systems?
-    # OSX
+
+    # Set application name for OS - does not work on OSX but seems to work
+    # on others.
     app.setApplicationName("ASDF Sextant")
     app.setStyleSheet(qdarkstyle.load_stylesheet_pyside2())
 
-    # Set the icon
+    # Set the application icon
     app_icon = QtGui.QIcon()
     app_icon.addFile(
         os.path.join(os.path.dirname(__file__), "icon.png"),
@@ -1312,12 +1313,12 @@ def launch():
     app.setWindowIcon(app_icon)
 
     window = Window()
+    breakpoint()
 
     # Move window to center of screen.
-    # XXX: Uncomment
-    # window.move(
-    #     app.desktop().screen().rect().center() - window.rect().center()
-    # )
+    window.move(
+        app.desktop().screen().rect().center() - window.rect().center()
+    )
 
     # Show and bring window to foreground.
     window.show()
