@@ -9,6 +9,7 @@ Graphical utility to visualize ASDF files.
     MIT
 """
 from PySide2 import QtGui, QtCore, QtWebEngine
+from PySide2.QtWidgets import QDesktopWidget
 import pyqtgraph as pg
 import qdarkstyle
 
@@ -1313,14 +1314,14 @@ def launch():
     app.setWindowIcon(app_icon)
 
     window = Window()
-    window.show()
 
     # Move window to center of screen.
-    window.move(
-        app.desktop().screen().rect().center() - window.rect().center()
-    )
+    window_rect = window.frameGeometry()
+    window_rect.moveCenter(QDesktopWidget().availableGeometry().center())
+    window.move(window_rect.topLeft())
 
     # Show and bring window to foreground.
+    window.show()
     app.installEventFilter(window)
     window.raise_()
     ret_val = app.exec_()
