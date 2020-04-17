@@ -755,22 +755,20 @@ class Window(QtGui.QMainWindow):
         """
         Fill the station tree widget upon opening a new file.
         """
-        filename = str(
-            QtGui.QFileDialog.getOpenFileName(
-                parent=self,
-                caption="Choose File",
-                directory=self._state["file_open_dir"],
-                filter="ASDF files (*.h5)",
-            )
+        filename = QtGui.QFileDialog.getOpenFileName(
+            parent=self,
+            caption="Choose File",
+            directory=self._state["file_open_dir"],
+            filter="ASDF files (*.h5)",
         )
         if not filename:
             return
 
         # Open the parent dir of the current file the next time the file
         # dialogue is opened.
-        self._state["file_open_dir"] = os.path.dirname(filename)
+        self._state["file_open_dir"] = os.path.dirname(filename[0])
 
-        self.open_file(filename)
+        self.open_file(filename[0])
 
     @QtCore.Slot(int)
     def on_custom_processing_check_box_stateChanged(self, state):
