@@ -281,15 +281,11 @@ class Window(QtGui.QMainWindow):
         # First try to reset everything.
         self.ui.open_files_list_widget.clear()
         # Remove all stations from the map.
-        # XXX: Uncomment
-        # self.ui.web_engine_view.page().mainFrame().evaluateJavaScript(
-        #     "removeAllStations()"
-        # )
+        self.ui.web_engine_view.page().runJavaScript("removeAllStations()")
         # Same for the events
-        # XXX: Uncomment
-        # self.ui.events_web_engine_view.page().mainFrame().evaluateJavaScript(
-        #    "removeAllEvents()"
-        # )
+        self.ui.events_web_engine_view.page().runJavaScript(
+            "removeAllEvents()"
+        )
         # Clear provenance list.
         self.provenance_list_model.clear()
         # Clear station view list.
@@ -335,14 +331,13 @@ class Window(QtGui.QMainWindow):
             js_call = "addStation('{station_id}', {latitude}, {longitude})"
             if "latitude" not in c or "longitude" not in c:
                 continue
-            # XXX: Uncomment
-            # self.ui.web_engine_view.page().mainFrame().evaluateJavaScript(
-            #     js_call.format(
-            #         station_id=k,
-            #         latitude=c["latitude"],
-            #         longitude=c["longitude"],
-            #     )
-            # )
+            self.ui.web_engine_view.page().runJavaScript(
+                js_call.format(
+                    station_id=k,
+                    latitude=c["latitude"],
+                    longitude=c["longitude"],
+                )
+            )
 
         # Add provenance.
         prov = set()
@@ -466,10 +461,7 @@ class Window(QtGui.QMainWindow):
                     latitude=org.latitude,
                     longitude=org.longitude,
                 )
-                # XXX: Uncomment
-                # self.ui.events_web_engine_view.page().mainFrame().evaluateJavaScript(  # NOQA
-                #     js_call
-                # )
+                self.ui.events_web_engine_view.page().runJavaScript(js_call)
 
             event_item = QtGui.QTreeWidgetItem(
                 [event.resource_id.id], type=EVENT_VIEW_ITEM_TYPES["EVENT"]
@@ -993,10 +985,7 @@ class Window(QtGui.QMainWindow):
             event = str(item.parent().parent().text(0))
 
         js_call = "highlightEvent('{event_id}');".format(event_id=event)
-        # XXX: Uncomment
-        # self.ui.events_web_engine_view.page().mainFrame().evaluateJavaScript(
-        #     js_call
-        # )
+        self.ui.events_web_engine_view.page().runJavaScript(js_call)
 
     @QtCore.Slot(QtGui.QTreeWidgetItem, int)
     def on_auxiliary_data_tree_view_itemClicked(self, item, column):
@@ -1196,39 +1185,26 @@ class Window(QtGui.QMainWindow):
         if t == STATION_VIEW_ITEM_TYPES["NETWORK"]:
             network = item.text(0)
             js_call = "highlightNetwork('{network}')".format(network=network)
-            # XXX: Uncomment
-            # self.ui.web_engine_view.page().mainFrame().evaluateJavaScript(
-            #     js_call
-            # )
+            self.ui.web_engine_view.page().runJavaScript(js_call)
         elif t == STATION_VIEW_ITEM_TYPES["STATION"]:
             station = get_station(item, parent=False)
             js_call = "highlightStation('{station}')".format(station=station)
-            # XXX: Uncomment
-            # self.ui.web_engine_view.page().mainFrame().evaluateJavaScript(
-            #     js_call
-            # )
+            self.ui.web_engine_view.page().runJavaScript(js_call)
         elif t == STATION_VIEW_ITEM_TYPES["STATIONXML"]:
             station = get_station(item)
             js_call = "highlightStation('{station}')".format(station=station)
-            # XXX: Uncomment
-            # self.ui.web_engine_view.page().mainFrame().evaluateJavaScript(
-            #     js_call
-            # )
+            self.ui.web_engine_view.page().runJavaScript(js_call)
         elif t == STATION_VIEW_ITEM_TYPES["WAVEFORM"]:
             station = get_station(item)
             js_call = "highlightStation('{station}')".format(station=station)
-            # XXX: Uncomment
-            # self.ui.web_engine_view.page().mainFrame().evaluateJavaScript(
-            #     js_call
-            # )
+            self.ui.web_engine_view.page().runJavaScript(js_call)
         else:
             pass
 
     @QtCore.Slot()
     def on_station_view_itemExited(self, *args):
         js_call = "setAllInactive()"
-        # XXX: Uncomment
-        # self.ui.web_engine_view.page().mainFrame().evaluateJavaScript(js_call)
+        self.ui.web_engine_view.page().runJavaScript(js_call)
 
 
 class NoTabQPlainTextEdit(QtGui.QPlainTextEdit):
