@@ -1313,7 +1313,7 @@ def launch():
     app.setWindowIcon(app_icon)
 
     window = Window()
-    breakpoint()
+    window.show()
 
     # Move window to center of screen.
     window.move(
@@ -1321,7 +1321,6 @@ def launch():
     )
 
     # Show and bring window to foreground.
-    window.show()
     app.installEventFilter(window)
     window.raise_()
     ret_val = app.exec_()
