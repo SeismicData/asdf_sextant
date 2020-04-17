@@ -8,8 +8,12 @@ Graphical utility to visualize ASDF files.
 :license:
     MIT
 """
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
+from __future__ import (
+    absolute_import,
+    division,
+    print_function,
+    unicode_literals,
+)
 
 from PyQt4 import QtGui, QtCore, QtWebKit
 import pyqtgraph as pg
@@ -40,27 +44,30 @@ STATION_VIEW_ITEM_TYPES = {
     "NETWORK": 0,
     "STATION": 1,
     "STATIONXML": 2,
-    "WAVEFORM": 3}
+    "WAVEFORM": 3,
+}
 
-EVENT_VIEW_ITEM_TYPES = {
-    "EVENT": 0,
-    "ORIGIN": 1,
-    "MAGNITUDE": 2,
-    "FOCMEC": 3}
+EVENT_VIEW_ITEM_TYPES = {"EVENT": 0, "ORIGIN": 1, "MAGNITUDE": 2, "FOCMEC": 3}
 
-AUX_DATA_ITEM_TYPES = {
-    "DATA_TYPE": 0,
-    "DATA_ITEM": 1}
+AUX_DATA_ITEM_TYPES = {"DATA_TYPE": 0, "DATA_ITEM": 1}
 
 
 # Colors for the datasets.
-DATASET_COLORS = ["#CCCCCC", "#32B165", "#A38CF4", "#CE8F31", "#F67088",
-                  "#38A7D0", "#96A331"]
+DATASET_COLORS = [
+    "#CCCCCC",
+    "#32B165",
+    "#A38CF4",
+    "#CE8F31",
+    "#F67088",
+    "#38A7D0",
+    "#96A331",
+]
 
 
 # Default to antialiased drawing.
-pg.setConfigOptions(antialias=True, foreground=(200, 200, 200),
-                    background=None)
+pg.setConfigOptions(
+    antialias=True, foreground=(200, 200, 200), background=None
+)
 
 
 def compile_and_import_ui_files():
@@ -73,16 +80,19 @@ def compile_and_import_ui_files():
     modifies the globals to be able to automatically import the created py-ui
     files. Its just very convenient.
     """
-    directory = os.path.dirname(os.path.abspath(
-        inspect.getfile(inspect.currentframe())))
-    for filename in iglob(os.path.join(directory, '*.ui')):
+    directory = os.path.dirname(
+        os.path.abspath(inspect.getfile(inspect.currentframe()))
+    )
+    for filename in iglob(os.path.join(directory, "*.ui")):
         ui_file = filename
-        py_ui_file = os.path.splitext(ui_file)[0] + os.path.extsep + 'py'
-        if not os.path.exists(py_ui_file) or \
-                (os.path.getmtime(ui_file) >= os.path.getmtime(py_ui_file)):
+        py_ui_file = os.path.splitext(ui_file)[0] + os.path.extsep + "py"
+        if not os.path.exists(py_ui_file) or (
+            os.path.getmtime(ui_file) >= os.path.getmtime(py_ui_file)
+        ):
             from PyQt4 import uic
+
             print("Compiling ui file: %s" % ui_file)
-            with open(py_ui_file, 'w') as open_file:
+            with open(py_ui_file, "w") as open_file:
                 uic.compileUi(ui_file, open_file)
         # Import the (compiled) file.
         try:
@@ -151,9 +161,15 @@ def resolve_filename(filename):
         # This is slow and complicated but appears to be the most reasonable
         # solution.
         process = subprocess.Popen(
-            ["osascript", "-e", "get posix path of my posix file "
-                                "\"file://%s\" -- kthx. bai" % filename],
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            [
+                "osascript",
+                "-e",
+                "get posix path of my posix file "
+                '"file://%s" -- kthx. bai' % filename,
+            ],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
         out, err = process.communicate()
         # Might fail for any number of reasons.
         if process.returncode != 0:
@@ -174,24 +190,31 @@ class Window(QtGui.QMainWindow):
         self.ui.setupUi(self)
 
         self.provenance_list_model = QtGui.QStandardItemModel(
-            self.ui.provenance_list_view)
+            self.ui.provenance_list_view
+        )
         self.ui.provenance_list_view.setModel(self.provenance_list_model)
 
         # Station view.
-        map_file = os.path.abspath(os.path.join(
-            os.path.dirname(__file__), "resources/index.html"))
+        map_file = os.path.abspath(
+            os.path.join(os.path.dirname(__file__), "resources/index.html")
+        )
         self.ui.web_view.load(QtCore.QUrl.fromLocalFile(map_file))
         # Enable debugging of the web view.
         self.ui.web_view.settings().setAttribute(
-            QtWebKit.QWebSettings.DeveloperExtrasEnabled, True)
+            QtWebKit.QWebSettings.DeveloperExtrasEnabled, True
+        )
 
         # Event view.
-        map_file = os.path.abspath(os.path.join(
-            os.path.dirname(__file__), "resources/index_event.html"))
+        map_file = os.path.abspath(
+            os.path.join(
+                os.path.dirname(__file__), "resources/index_event.html"
+            )
+        )
         self.ui.events_web_view.load(QtCore.QUrl.fromLocalFile(map_file))
         # Enable debugging of the web view.
         self.ui.events_web_view.settings().setAttribute(
-            QtWebKit.QWebSettings.DeveloperExtrasEnabled, True)
+            QtWebKit.QWebSettings.DeveloperExtrasEnabled, True
+        )
 
         # Trial and error to find reasonable initial sizes of the splitters.
         # This can probably be done in a simpler way but it appears to work.
@@ -213,7 +236,8 @@ class Window(QtGui.QMainWindow):
                 "import numpy as np\n\n\n"
                 "def process(st, inv, tag):\n"
                 "    # Do whatever you want in here, but return st.\n"
-                "    return st")
+                "    return st"
+            ),
         }
 
         self._open_files = collections.OrderedDict()
@@ -230,14 +254,17 @@ class Window(QtGui.QMainWindow):
         # on child events.
         class EventFilter(QtCore.QObject):
             def eventFilter(self, obj, event):
-                if not isinstance(event, (QtGui.QDragEnterEvent,
-                                          QtGui.QDragMoveEvent)):
+                if not isinstance(
+                    event, (QtGui.QDragEnterEvent, QtGui.QDragMoveEvent)
+                ):
                     return False
 
                 def _get_filenames(event):
                     try:
-                        paths = [resolve_filename(_i.path())
-                                 for _i in event.mimeData().urls()]
+                        paths = [
+                            resolve_filename(_i.path())
+                            for _i in event.mimeData().urls()
+                        ]
                     except:
                         return False
                     for p in paths:
@@ -264,8 +291,9 @@ class Window(QtGui.QMainWindow):
         """
         # The drag enter and move already assert that the file exists and
         # that it ends with `.h5`.
-        filenames = [resolve_filename(_i.path())
-                     for _i in event.mimeData().urls()]
+        filenames = [
+            resolve_filename(_i.path()) for _i in event.mimeData().urls()
+        ]
         for filename in filenames:
             self.open_file(filename=filename)
 
@@ -281,19 +309,23 @@ class Window(QtGui.QMainWindow):
         slots from pyuic4.
         """
         self.ui.station_view.itemEntered.connect(
-            self.on_station_view_itemEntered)
+            self.on_station_view_itemEntered
+        )
         self.ui.station_view.itemExited.connect(
-            self.on_station_view_itemExited)
+            self.on_station_view_itemExited
+        )
 
     def _update(self):
         # First try to reset everything.
         self.ui.open_files_list_widget.clear()
         # Remove all stations from the map.
         self.ui.web_view.page().mainFrame().evaluateJavaScript(
-            "removeAllStations()")
+            "removeAllStations()"
+        )
         # Same for the events
         self.ui.events_web_view.page().mainFrame().evaluateJavaScript(
-            "removeAllEvents()")
+            "removeAllEvents()"
+        )
         # Clear provenance list.
         self.provenance_list_model.clear()
         # Clear station view list.
@@ -318,10 +350,12 @@ class Window(QtGui.QMainWindow):
             text = "[%s] %s" % (
                 info["ds"].pretty_filesize,
                 # Shortened absolute path.
-                "/".join([_i[:1] for _i in _f[:-1]] + _f[-1:]))
+                "/".join([_i[:1] for _i in _f[:-1]] + _f[-1:]),
+            )
 
             item = QtGui.QListWidgetItem(
-                make_icon(colors=[info["color"]]), text)
+                make_icon(colors=[info["color"]]), text
+            )
             # Make it non-selectable.
             item.setFlags(QtCore.Qt.ItemIsEnabled)
 
@@ -338,9 +372,12 @@ class Window(QtGui.QMainWindow):
             if "latitude" not in c or "longitude" not in c:
                 continue
             self.ui.web_view.page().mainFrame().evaluateJavaScript(
-                js_call.format(station_id=k,
-                               latitude=c["latitude"],
-                               longitude=c["longitude"]))
+                js_call.format(
+                    station_id=k,
+                    latitude=c["latitude"],
+                    longitude=c["longitude"],
+                )
+            )
 
         # Add provenance.
         prov = set()
@@ -360,16 +397,16 @@ class Window(QtGui.QMainWindow):
         def recursive_tree(name, item):
             if isinstance(item, pyasdf.utils.AuxiliaryDataAccessor):
                 data_type_item = QtGui.QTreeWidgetItem(
-                    [name],
-                    type=AUX_DATA_ITEM_TYPES["DATA_TYPE"])
+                    [name], type=AUX_DATA_ITEM_TYPES["DATA_TYPE"]
+                )
                 children = []
                 for sub_item in item.list():
                     children.append(recursive_tree(sub_item, item[sub_item]))
                 data_type_item.addChildren(children)
             elif isinstance(item, pyasdf.utils.AuxiliaryDataContainer):
                 data_type_item = QtGui.QTreeWidgetItem(
-                    [name],
-                    type=AUX_DATA_ITEM_TYPES["DATA_ITEM"])
+                    [name], type=AUX_DATA_ITEM_TYPES["DATA_ITEM"]
+                )
             else:
                 raise NotImplementedError
             return data_type_item
@@ -384,13 +421,14 @@ class Window(QtGui.QMainWindow):
             except KeyError:
                 aux_items = []
             for data_type in aux_items:
-                items.append(recursive_tree(
-                    data_type,
-                    info["ds"].auxiliary_data[data_type]))
+                items.append(
+                    recursive_tree(
+                        data_type, info["ds"].auxiliary_data[data_type]
+                    )
+                )
             if not items:
                 continue
-            f = QtGui.QTreeWidgetItem(
-                [filename])
+            f = QtGui.QTreeWidgetItem([filename])
             f.setIcon(0, make_icon([info["color"]]))
             f.addChildren(items)
             file_items.append(f)
@@ -436,7 +474,7 @@ class Window(QtGui.QMainWindow):
             "color": color,
             "contents": station_info,
             "provenance": prov,
-            "events": ds.events
+            "events": ds.events,
         }
 
         self._update()
@@ -458,16 +496,18 @@ class Window(QtGui.QMainWindow):
             if event.origins:
                 org = event.preferred_origin() or event.origins[0]
 
-                js_call = "addEvent('{event_id}', {latitude}, {longitude});"\
-                    .format(event_id=event.resource_id.id,
-                            latitude=org.latitude,
-                            longitude=org.longitude)
+                js_call = "addEvent('{event_id}', {latitude}, {longitude});".format(
+                    event_id=event.resource_id.id,
+                    latitude=org.latitude,
+                    longitude=org.longitude,
+                )
                 self.ui.events_web_view.page().mainFrame().evaluateJavaScript(
-                    js_call)
+                    js_call
+                )
 
             event_item = QtGui.QTreeWidgetItem(
-                [event.resource_id.id],
-                type=EVENT_VIEW_ITEM_TYPES["EVENT"])
+                [event.resource_id.id], type=EVENT_VIEW_ITEM_TYPES["EVENT"]
+            )
             self._state["quake_ids"][event.resource_id.id] = event_item
 
             origin_item = QtGui.QTreeWidgetItem(["Origins"], type=-1)
@@ -479,7 +519,9 @@ class Window(QtGui.QMainWindow):
                 org_items.append(
                     QtGui.QTreeWidgetItem(
                         [origin.resource_id.id],
-                        type=EVENT_VIEW_ITEM_TYPES["ORIGIN"]))
+                        type=EVENT_VIEW_ITEM_TYPES["ORIGIN"],
+                    )
+                )
                 self._state["quake_ids"][origin.resource_id.id] = org_items[-1]
             origin_item.addChildren(org_items)
 
@@ -488,9 +530,12 @@ class Window(QtGui.QMainWindow):
                 mag_items.append(
                     QtGui.QTreeWidgetItem(
                         [magnitude.resource_id.id],
-                        type=EVENT_VIEW_ITEM_TYPES["MAGNITUDE"]))
-                self._state["quake_ids"][magnitude.resource_id.id] = \
-                    mag_items[-1]
+                        type=EVENT_VIEW_ITEM_TYPES["MAGNITUDE"],
+                    )
+                )
+                self._state["quake_ids"][magnitude.resource_id.id] = mag_items[
+                    -1
+                ]
             magnitude_item.addChildren(mag_items)
 
             focmec_items = []
@@ -498,9 +543,12 @@ class Window(QtGui.QMainWindow):
                 focmec_items.append(
                     QtGui.QTreeWidgetItem(
                         [focmec.resource_id.id],
-                        type=EVENT_VIEW_ITEM_TYPES["FOCMEC"]))
-                self._state["quake_ids"][focmec.resource_id.id] = \
-                    focmec_items[-1]
+                        type=EVENT_VIEW_ITEM_TYPES["FOCMEC"],
+                    )
+                )
+                self._state["quake_ids"][focmec.resource_id.id] = focmec_items[
+                    -1
+                ]
             focmec_item.addChildren(focmec_items)
 
             event_item.addChildren([origin_item, magnitude_item, focmec_item])
@@ -534,19 +582,20 @@ class Window(QtGui.QMainWindow):
 
         items = []
         for key, group in itertools.groupby(
-                all_stations,
-                key=lambda x: x[0].split(".")[0]):
+            all_stations, key=lambda x: x[0].split(".")[0]
+        ):
 
             network_item = QtGui.QTreeWidgetItem(
-                [key],
-                type=STATION_VIEW_ITEM_TYPES["NETWORK"])
+                [key], type=STATION_VIEW_ITEM_TYPES["NETWORK"]
+            )
             all_colors_for_network = set()
             group = sorted(group, key=lambda x: x[0])
 
             for name, content in group:
-                station_item = QtGui.QTreeWidgetItem([
-                    name.split(".")[-1]],
-                    type=STATION_VIEW_ITEM_TYPES["STATION"])
+                station_item = QtGui.QTreeWidgetItem(
+                    [name.split(".")[-1]],
+                    type=STATION_VIEW_ITEM_TYPES["STATION"],
+                )
 
                 all_colors_for_station = set()
 
@@ -561,8 +610,9 @@ class Window(QtGui.QMainWindow):
                     icon = make_icon(colors=c)
                     children.append(
                         QtGui.QTreeWidgetItem(
-                            [tag],
-                            type=STATION_VIEW_ITEM_TYPES["STATIONXML"]))
+                            [tag], type=STATION_VIEW_ITEM_TYPES["STATIONXML"]
+                        )
+                    )
                     children[-1].setIcon(0, icon)
                 # Then the rest - sorry for being lazy.
                 for tag, info in content:
@@ -573,8 +623,9 @@ class Window(QtGui.QMainWindow):
                     icon = make_icon(colors=c)
                     children.append(
                         QtGui.QTreeWidgetItem(
-                            [tag],
-                            type=STATION_VIEW_ITEM_TYPES["WAVEFORM"]))
+                            [tag], type=STATION_VIEW_ITEM_TYPES["WAVEFORM"]
+                        )
+                    )
                     children[-1].setIcon(0, icon)
                 station_item.addChildren(children)
                 station_item.setIcon(0, make_icon(all_colors_for_station))
@@ -590,6 +641,7 @@ class Window(QtGui.QMainWindow):
         popup = QtGui.QMenu()
 
         for filename, info in self._open_files.items():
+
             def get_action_fct():
                 _filename = filename
 
@@ -597,19 +649,24 @@ class Window(QtGui.QMainWindow):
                     del self._open_files[_filename]["ds"]
                     del self._open_files[_filename]
                     self._update()
+
                 return _action
 
             # Bind with a closure.
             popup.addAction(
-                make_icon([info["color"]]),
-                "Close %s" % filename).triggered.connect(get_action_fct())
+                make_icon([info["color"]]), "Close %s" % filename
+            ).triggered.connect(get_action_fct())
 
-        popup.exec_(self.ui.close_file_button.parentWidget().mapToGlobal(
-            self.ui.close_file_button.pos()))
+        popup.exec_(
+            self.ui.close_file_button.parentWidget().mapToGlobal(
+                self.ui.close_file_button.pos()
+            )
+        )
 
     def on_custom_processing_push_button_released(self):
         new_processing_script, ok = ProcessingScriptDialog.edit(
-            self._state["custom_processing_script"])
+            self._state["custom_processing_script"]
+        )
 
         # If cancel or something else has been pressed, just return
         if ok is not True:
@@ -625,7 +682,8 @@ class Window(QtGui.QMainWindow):
         for v in self._open_files.values():
             try:
                 info = v["ds"].provenance.get_provenance_document_for_id(
-                    prov_id)
+                    prov_id
+                )
                 break
             except:
                 pass
@@ -658,11 +716,14 @@ class Window(QtGui.QMainWindow):
         self.ui.central_tab.setCurrentWidget(self.ui.event_tab)
 
     def on_show_auxiliary_provenance_button_released(self):
-        if "current_auxiliary_data_provenance_id" not in self._state or \
-                not self._state["current_auxiliary_data_provenance_id"]:
+        if (
+            "current_auxiliary_data_provenance_id" not in self._state
+            or not self._state["current_auxiliary_data_provenance_id"]
+        ):
             return
         self.show_provenance_for_id(
-            self._state["current_auxiliary_data_provenance_id"])
+            self._state["current_auxiliary_data_provenance_id"]
+        )
 
     def on_references_push_button_released(self):
         if "current_station_objects" not in self._state:
@@ -674,18 +735,21 @@ class Window(QtGui.QMainWindow):
         for filename, obj in objects.items():
             ds = self._open_files[filename]["ds"]
             popup = main_popup.addMenu(
-                make_icon([self._open_files[filename]["color"]]),
-                filename)
+                make_icon([self._open_files[filename]["color"]]), filename
+            )
             for waveform in obj.list():
                 if not waveform.endswith(
-                        "__" + self._state["current_waveform_tag"]):
+                    "__" + self._state["current_waveform_tag"]
+                ):
                     continue
                 menu = popup.addMenu(waveform)
                 attributes = dict(
-                    ds._waveform_group[obj._station_name][waveform].attrs)
+                    ds._waveform_group[obj._station_name][waveform].attrs
+                )
 
-                for key, value in sorted([_i for _i in attributes.items()],
-                                         key=lambda x: x[0]):
+                for key, value in sorted(
+                    [_i for _i in attributes.items()], key=lambda x: x[0]
+                ):
                     if not key.endswith("_id"):
                         continue
                     key = key[:-3].capitalize()
@@ -706,20 +770,27 @@ class Window(QtGui.QMainWindow):
 
                     # Bind with a closure.
                     menu.addAction("%s: %s" % (key, value)).triggered.connect(
-                        get_action_fct())
+                        get_action_fct()
+                    )
 
         main_popup.exec_(
             self.ui.references_push_button.parentWidget().mapToGlobal(
-                self.ui.references_push_button.pos()))
+                self.ui.references_push_button.pos()
+            )
+        )
 
     def on_select_file_button_released(self):
         """
         Fill the station tree widget upon opening a new file.
         """
-        filename = str(QtGui.QFileDialog.getOpenFileName(
-            parent=self, caption="Choose File",
-            directory=self._state["file_open_dir"],
-            filter="ASDF files (*.h5)"))
+        filename = str(
+            QtGui.QFileDialog.getOpenFileName(
+                parent=self,
+                caption="Choose File",
+                directory=self._state["file_open_dir"],
+                filter="ASDF files (*.h5)",
+            )
+        )
         if not filename:
             return
 
@@ -749,8 +820,9 @@ class Window(QtGui.QMainWindow):
 
         # Get the filter settings.
         filter_settings = {}
-        filter_settings["detrend_and_demean"] = \
-            self.ui.detrend_and_demean_check_box.isChecked()
+        filter_settings[
+            "detrend_and_demean"
+        ] = self.ui.detrend_and_demean_check_box.isChecked()
         filter_settings["normalize"] = self.ui.normalize_check_box.isChecked()
 
         temp_st = self.st.copy()
@@ -763,8 +835,9 @@ class Window(QtGui.QMainWindow):
 
             # Try to find the stationxml file.
             inv = None
-            for station_object in \
-                    self._state["current_station_objects"].values():
+            for station_object in self._state[
+                "current_station_objects"
+            ].values():
                 try:
                     inv = station_object.StationXML
                     break
@@ -773,9 +846,8 @@ class Window(QtGui.QMainWindow):
 
             # Execute it.
             temp_st = processing_function(
-                st=temp_st,
-                inv=inv,
-                tag=self._state["current_waveform_tag"])
+                st=temp_st, inv=inv, tag=self._state["current_waveform_tag"]
+            )
         else:
             if filter_settings["detrend_and_demean"]:
                 temp_st.detrend("linear")
@@ -798,14 +870,21 @@ class Window(QtGui.QMainWindow):
         for _i, component in enumerate(components):
             st = [tr for tr in temp_st if tr.stats.channel[-1] == component]
             plot = self.ui.graph.addPlot(
-                _i, 0, title=st[0].id,
-                axisItems={'bottom': DateAxisItem(orientation='bottom',
-                                                  utcOffset=0)})
+                _i,
+                0,
+                title=st[0].id,
+                axisItems={
+                    "bottom": DateAxisItem(orientation="bottom", utcOffset=0)
+                },
+            )
             plot.show()
             self._state["waveform_plots"][component] = plot
             for tr in st:
-                plot.plot(tr.times() + tr.stats.starttime.timestamp, tr.data,
-                          pen=QtGui.QColor(tr.stats.__color))
+                plot.plot(
+                    tr.times() + tr.stats.starttime.timestamp,
+                    tr.data,
+                    pen=QtGui.QColor(tr.stats.__color),
+                )
                 starttimes.append(tr.stats.starttime)
                 endtimes.append(tr.stats.endtime)
                 min_values.append(tr.data.min())
@@ -826,8 +905,10 @@ class Window(QtGui.QMainWindow):
     def reset_view(self):
         wf = list(self._state["waveform_plots"].values())[0]
 
-        wf.setXRange(self._state["waveform_plots_min_time"].timestamp,
-                     self._state["waveform_plots_max_time"].timestamp)
+        wf.setXRange(
+            self._state["waveform_plots_min_time"].timestamp,
+            self._state["waveform_plots_max_time"].timestamp,
+        )
         min_v = self._state["waveform_plots_min_value"]
         max_v = self._state["waveform_plots_max_value"]
 
@@ -868,11 +949,14 @@ class Window(QtGui.QMainWindow):
             station = get_station(item)
 
             for v in self._open_files.values():
-                if station in v["contents"] and \
-                        v["contents"][station]["has_stationxml"]:
+                if (
+                    station in v["contents"]
+                    and v["contents"][station]["has_stationxml"]
+                ):
                     try:
                         v["ds"].waveforms[station].StationXML.plot_response(
-                            0.001)
+                            0.001
+                        )
                     except:
                         continue
                     break
@@ -924,7 +1008,8 @@ class Window(QtGui.QMainWindow):
             msg_box.exec_()
             return
         self.ui.events_text_browser.setPlainText(
-            str(res_id.get_referred_object()))
+            str(res_id.get_referred_object())
+        )
 
         if t == EVENT_VIEW_ITEM_TYPES["EVENT"]:
             event = text
@@ -969,14 +1054,20 @@ class Window(QtGui.QMainWindow):
         aux_data = group[tag]
 
         # Files are a bit special.
-        if len(aux_data.data.shape) == 1 and \
-                path[0].lower() in ["file", "files"]:
+        if len(aux_data.data.shape) == 1 and path[0].lower() in [
+            "file",
+            "files",
+        ]:
             self.ui.auxiliary_file_browser.setPlainText(
-                aux_data.file.read().decode())
+                aux_data.file.read().decode()
+            )
             self.ui.auxiliary_data_stacked_widget.setCurrentWidget(
-                self.ui.auxiliary_data_file_page)
-        elif len(aux_data.data.shape) == 1 or \
-                sum(aux_data.data.shape[1:]) == len(aux_data.data.shape) - 1:
+                self.ui.auxiliary_data_file_page
+            )
+        elif (
+            len(aux_data.data.shape) == 1
+            or sum(aux_data.data.shape[1:]) == len(aux_data.data.shape) - 1
+        ):
             plot = graph.addPlot(title="%s/%s" % ("/".join(path), tag))
             plot.show()
 
@@ -984,9 +1075,16 @@ class Window(QtGui.QMainWindow):
 
             npts = len(data)
             t = np.arange(npts)
-            if path[0].lower() in ["crosscorrelation", "crosscorrelations",
-                                   "xcorr", "xcorrs", "corr", "corrs",
-                                   "correlation", "correlations"]:
+            if path[0].lower() in [
+                "crosscorrelation",
+                "crosscorrelations",
+                "xcorr",
+                "xcorrs",
+                "corr",
+                "corrs",
+                "correlation",
+                "correlations",
+            ]:
                 dt_names = ["dt", "delta", "sample_spacing", "sample_interval"]
                 dt_names += [_i.upper() for _i in dt_names]
                 dt_names += [_i.capitalize() for _i in dt_names]
@@ -998,12 +1096,13 @@ class Window(QtGui.QMainWindow):
                         break
                 if dt:
                     length = (npts - 1) * dt
-                    t = np.linspace(- length / 2.0, length / 2.0, npts)
+                    t = np.linspace(-length / 2.0, length / 2.0, npts)
                     plot.setLabel(axis="bottom", text="Lag Time [s]")
 
             plot.plot(t, data)
             self.ui.auxiliary_data_stacked_widget.setCurrentWidget(
-                self.ui.auxiliary_data_graph_page)
+                self.ui.auxiliary_data_graph_page
+            )
         # 2D Shapes.
         elif len(aux_data.data.shape) == 2:
             # If 6 or less components on the first dimensions and a lot on
@@ -1020,7 +1119,8 @@ class Window(QtGui.QMainWindow):
                         plot.setXLink(first_plot)
                         plot.setYLink(first_plot)
                 self.ui.auxiliary_data_stacked_widget.setCurrentWidget(
-                    self.ui.auxiliary_data_graph_page)
+                    self.ui.auxiliary_data_graph_page
+                )
             # Otherwise assume its a 2D image.
             else:
                 img = pg.ImageItem(border="#3D8EC9")
@@ -1029,7 +1129,8 @@ class Window(QtGui.QMainWindow):
                 vb.setAspectLocked(True)
                 vb.addItem(img)
                 self.ui.auxiliary_data_stacked_widget.setCurrentWidget(
-                    self.ui.auxiliary_data_graph_page)
+                    self.ui.auxiliary_data_graph_page
+                )
         # Anything else is currently not supported.
         else:
             raise NotImplementedError
@@ -1038,8 +1139,9 @@ class Window(QtGui.QMainWindow):
         tv = self.ui.auxiliary_data_detail_table_view
         tv.clear()
 
-        self._state["current_auxiliary_data_provenance_id"] = \
-            aux_data.provenance_id
+        self._state[
+            "current_auxiliary_data_provenance_id"
+        ] = aux_data.provenance_id
         if aux_data.provenance_id:
             self.ui.show_auxiliary_provenance_button.setEnabled(True)
         else:
@@ -1068,8 +1170,11 @@ class Window(QtGui.QMainWindow):
             ("shape", str(aux_data.data.shape)),
             ("dtype", str(aux_data.data.dtype)),
             ("dimensions", str(len(aux_data.data.shape))),
-            ("uncompressed size", sizeof_fmt(
-                aux_data.data.dtype.itemsize * aux_data.data.size))]
+            (
+                "uncompressed size",
+                sizeof_fmt(aux_data.data.dtype.itemsize * aux_data.data.size),
+            ),
+        ]
 
         tv = self.ui.auxiliary_data_info_table_view
         tv.clear()
@@ -1164,9 +1269,11 @@ class ProcessingScriptDialog(QtGui.QDialog):
 
         layout = QtGui.QVBoxLayout(self)
 
-        label = QtGui.QLabel("Edit this script for flexible custom "
-                             "processing using all of ObsPy and the Python "
-                             "ecosystem!")
+        label = QtGui.QLabel(
+            "Edit this script for flexible custom "
+            "processing using all of ObsPy and the Python "
+            "ecosystem!"
+        )
         layout.addWidget(label)
 
         self.editor = NoTabQPlainTextEdit()
@@ -1179,7 +1286,9 @@ class ProcessingScriptDialog(QtGui.QDialog):
         # OK and Cancel buttons
         buttons = QtGui.QDialogButtonBox(
             QtGui.QDialogButtonBox.Ok | QtGui.QDialogButtonBox.Cancel,
-            QtCore.Qt.Horizontal, self)
+            QtCore.Qt.Horizontal,
+            self,
+        )
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
@@ -1199,13 +1308,15 @@ class _DynamicModule(object):
     """
     From https://stackoverflow.com/a/5371449.
     """
+
     def load(self, code):
         execdict = {}  # optional, to increase safety
         exec(code, execdict)
         keys = execdict.get(
-            '__all__',  # use __all__ attribute if defined
+            "__all__",  # use __all__ attribute if defined
             # else all non-private attributes
-            (key for key in execdict if not key.startswith('_')))
+            (key for key in execdict if not key.startswith("_")),
+        )
         for key in keys:
             setattr(self, key, execdict[key])
 
@@ -1223,15 +1334,18 @@ def launch():
 
     # Set the icon
     app_icon = QtGui.QIcon()
-    app_icon.addFile(os.path.join(os.path.dirname(__file__), "icon.png"),
-                     QtCore.QSize(1024, 1024))
+    app_icon.addFile(
+        os.path.join(os.path.dirname(__file__), "icon.png"),
+        QtCore.QSize(1024, 1024),
+    )
     app.setWindowIcon(app_icon)
 
     window = Window()
 
     # Move window to center of screen.
     window.move(
-        app.desktop().screen().rect().center() - window.rect().center())
+        app.desktop().screen().rect().center() - window.rect().center()
+    )
 
     # Show and bring window to foreground.
     window.show()

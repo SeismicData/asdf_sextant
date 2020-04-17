@@ -8,9 +8,9 @@ import time
 from datetime import datetime
 from pyqtgraph import AxisItem
 
-__all__ = ['DateAxisItem', 'ZoomLevel']
+__all__ = ["DateAxisItem", "ZoomLevel"]
 
-MS_SPACING = 1/1000.0
+MS_SPACING = 1 / 1000.0
 SECOND_SPACING = 1
 MINUTE_SPACING = 60
 HOUR_SPACING = 3600
@@ -24,36 +24,43 @@ def makeMSStepper(stepSize):
     def stepper(val, n):
         val *= 1000
         f = stepSize * 1000
-        return (val // (n*f) + 1) * (n*f) / 1000.0
+        return (val // (n * f) + 1) * (n * f) / 1000.0
+
     return stepper
 
 
 def makeSStepper(stepSize):
     def stepper(val, n):
-        return (val // (n*stepSize) + 1) * (n*stepSize)
+        return (val // (n * stepSize) + 1) * (n * stepSize)
+
     return stepper
 
 
 def makeMStepper(stepSize):
     def stepper(val, n):
         d = datetime.utcfromtimestamp(val)
-        base0m = (d.month + n*stepSize - 1)
+        base0m = d.month + n * stepSize - 1
         d = datetime(d.year + base0m // 12, base0m % 12 + 1, 1)
         return (d - datetime(1970, 1, 1)).total_seconds()
+
     return stepper
 
 
 def makeYStepper(stepSize):
     def stepper(val, n):
         d = datetime.utcfromtimestamp(val)
-        next_date = datetime((d.year // (n*stepSize) + 1) * (n*stepSize), 1, 1)
+        next_date = datetime(
+            (d.year // (n * stepSize) + 1) * (n * stepSize), 1, 1
+        )
         return (next_date - datetime(1970, 1, 1)).total_seconds()
+
     return stepper
 
 
 class TickSpec:
     """ Specifies the properties for a set of date ticks and computes ticks
     within a given utc timestamp range """
+
     def __init__(self, spacing, stepper, format, autoSkip=None):
         """
         ============= =========================================================
@@ -100,6 +107,7 @@ class TickSpec:
 
 class ZoomLevel:
     """ Generates the ticks which appear in a specific zoom level """
+
     def __init__(self, tickSpecs):
         """
         ============= =========================================================
@@ -139,33 +147,60 @@ class ZoomLevel:
         return valueSpecs
 
 
-YEAR_MONTH_ZOOM_LEVEL = ZoomLevel([
-    TickSpec(YEAR_SPACING, makeYStepper(1), '%Y', autoSkip=[1, 5, 10, 25]),
-    TickSpec(MONTH_SPACING, makeMStepper(1), '%b')
-])
-MONTH_DAY_ZOOM_LEVEL = ZoomLevel([
-    TickSpec(MONTH_SPACING, makeMStepper(1), '%b'),
-    TickSpec(DAY_SPACING, makeSStepper(DAY_SPACING), '%d', autoSkip=[1, 5])
-])
-DAY_HOUR_ZOOM_LEVEL = ZoomLevel([
-    TickSpec(DAY_SPACING, makeSStepper(DAY_SPACING), '%a %d'),
-    TickSpec(HOUR_SPACING, makeSStepper(HOUR_SPACING), '%H:%M',
-             autoSkip=[1, 6])
-])
-HOUR_MINUTE_ZOOM_LEVEL = ZoomLevel([
-    TickSpec(DAY_SPACING, makeSStepper(DAY_SPACING), '%a %d'),
-    TickSpec(MINUTE_SPACING, makeSStepper(MINUTE_SPACING), '%H:%M',
-             autoSkip=[1, 5, 15])
-])
-HMS_ZOOM_LEVEL = ZoomLevel([
-    TickSpec(SECOND_SPACING, makeSStepper(SECOND_SPACING), '%H:%M:%S',
-             autoSkip=[1, 5, 15, 30])
-])
-MS_ZOOM_LEVEL = ZoomLevel([
-    TickSpec(MINUTE_SPACING, makeSStepper(MINUTE_SPACING), '%H:%M:%S'),
-    TickSpec(MS_SPACING, makeMSStepper(MS_SPACING), '%S.%f',
-             autoSkip=[1, 5, 10, 25])
-])
+YEAR_MONTH_ZOOM_LEVEL = ZoomLevel(
+    [
+        TickSpec(YEAR_SPACING, makeYStepper(1), "%Y", autoSkip=[1, 5, 10, 25]),
+        TickSpec(MONTH_SPACING, makeMStepper(1), "%b"),
+    ]
+)
+MONTH_DAY_ZOOM_LEVEL = ZoomLevel(
+    [
+        TickSpec(MONTH_SPACING, makeMStepper(1), "%b"),
+        TickSpec(
+            DAY_SPACING, makeSStepper(DAY_SPACING), "%d", autoSkip=[1, 5]
+        ),
+    ]
+)
+DAY_HOUR_ZOOM_LEVEL = ZoomLevel(
+    [
+        TickSpec(DAY_SPACING, makeSStepper(DAY_SPACING), "%a %d"),
+        TickSpec(
+            HOUR_SPACING, makeSStepper(HOUR_SPACING), "%H:%M", autoSkip=[1, 6]
+        ),
+    ]
+)
+HOUR_MINUTE_ZOOM_LEVEL = ZoomLevel(
+    [
+        TickSpec(DAY_SPACING, makeSStepper(DAY_SPACING), "%a %d"),
+        TickSpec(
+            MINUTE_SPACING,
+            makeSStepper(MINUTE_SPACING),
+            "%H:%M",
+            autoSkip=[1, 5, 15],
+        ),
+    ]
+)
+HMS_ZOOM_LEVEL = ZoomLevel(
+    [
+        TickSpec(
+            SECOND_SPACING,
+            makeSStepper(SECOND_SPACING),
+            "%H:%M:%S",
+            autoSkip=[1, 5, 15, 30],
+        )
+    ]
+)
+MS_ZOOM_LEVEL = ZoomLevel(
+    [
+        TickSpec(MINUTE_SPACING, makeSStepper(MINUTE_SPACING), "%H:%M:%S"),
+        TickSpec(
+            MS_SPACING,
+            makeMSStepper(MS_SPACING),
+            "%S.%f",
+            autoSkip=[1, 5, 10, 25],
+        ),
+    ]
+)
 
 
 class DateAxisItem(AxisItem):
@@ -189,14 +224,14 @@ class DateAxisItem(AxisItem):
             self.utcOffset = utcOffset
         self.zoomLevel = YEAR_MONTH_ZOOM_LEVEL
         # we need about 60pt for our largest label
-        self.maxTicksPerPt = 1/60.0
+        self.maxTicksPerPt = 1 / 60.0
         self.zoomLevels = {
-            self.maxTicksPerPt:               MS_ZOOM_LEVEL,
-            30 * self.maxTicksPerPt:          HMS_ZOOM_LEVEL,
-            15 * 60 * self.maxTicksPerPt:     HOUR_MINUTE_ZOOM_LEVEL,
-            6 * 3600 * self.maxTicksPerPt:    DAY_HOUR_ZOOM_LEVEL,
-            5 * 3600*24 * self.maxTicksPerPt: MONTH_DAY_ZOOM_LEVEL,
-            3600*24*30 * self.maxTicksPerPt:  YEAR_MONTH_ZOOM_LEVEL
+            self.maxTicksPerPt: MS_ZOOM_LEVEL,
+            30 * self.maxTicksPerPt: HMS_ZOOM_LEVEL,
+            15 * 60 * self.maxTicksPerPt: HOUR_MINUTE_ZOOM_LEVEL,
+            6 * 3600 * self.maxTicksPerPt: DAY_HOUR_ZOOM_LEVEL,
+            5 * 3600 * 24 * self.maxTicksPerPt: MONTH_DAY_ZOOM_LEVEL,
+            3600 * 24 * 30 * self.maxTicksPerPt: YEAR_MONTH_ZOOM_LEVEL,
         }
 
     def tickStrings(self, values, scale, spacing):
@@ -206,13 +241,13 @@ class DateAxisItem(AxisItem):
         formatStrings = []
         for x in dates:
             try:
-                if '%f' in tickSpec.format:
+                if "%f" in tickSpec.format:
                     # we only support ms precision
                     formatStrings.append(x.strftime(tickSpec.format)[:-3])
                 else:
                     formatStrings.append(x.strftime(tickSpec.format))
             except ValueError:  # Windows can't handle dates before 1970
-                formatStrings.append('')
+                formatStrings.append("")
         return formatStrings
 
     def tickValues(self, minVal, maxVal, size):
