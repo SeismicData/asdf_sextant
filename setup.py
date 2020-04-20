@@ -8,11 +8,12 @@ with open(os.path.join(this_directory, "README.md"), encoding="utf-8") as f:
 
 setup(
     name="asdf-sextant",
-    version="0.1.0",
+    version="0.1.1",
     author="Lion Krischer",
     author_email="lion.krischer@gmail.com",
     description="GUI to explore ASDF files",
-    long_description="",
+    url="https://github.com/SeismicData/asdf_sextant",
+    long_description=long_description,
     long_description_content_type="text/markdown",
     classifiers=["Programming Language :: Python :: 3"],
     packages=find_packages(),
@@ -25,7 +26,7 @@ setup(
             "resources/script_event.js",
         ]
     },
-    python_requires=">=3.6, <4",
+    python_requires=">=3.6",
     install_requires=[
         "pyasdf",
         "pyside2",
