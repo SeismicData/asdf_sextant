@@ -19,6 +19,8 @@ import os
 import platform
 import subprocess
 import sys
+import threading
+import time
 import tempfile
 
 import numpy as np
@@ -157,11 +159,6 @@ class Window(QtGui.QMainWindow):
             os.path.join(os.path.dirname(__file__), "resources/index.html")
         )
         self.ui.web_engine_view.load(QtCore.QUrl.fromLocalFile(map_file))
-        # Enable debugging of the web view.
-        # XXX: Uncomment
-        # self.ui.web_engine_view.settings().setAttribute(
-        #     QtWebEngine.QWebSettings.DeveloperExtrasEnabled, True
-        # )
 
         # Event view.
         map_file = os.path.abspath(
@@ -172,11 +169,6 @@ class Window(QtGui.QMainWindow):
         self.ui.events_web_engine_view.load(
             QtCore.QUrl.fromLocalFile(map_file)
         )
-        # Enable debugging of the web view.
-        # XXX: Uncomment
-        # self.ui.events_web_engine_view.settings().setAttribute(
-        #     QtWebEngine.QWebSettings.DeveloperExtrasEnabled, True
-        # )
 
         # Trial and error to find reasonable initial sizes of the splitters.
         # This can probably be done in a simpler way but it appears to work.
@@ -1291,6 +1283,23 @@ class _DynamicModule(object):
 
 
 def launch():
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Visualize ASDF files.")
+
+    parser.add_argument(
+        "filename",
+        metavar="ASDF-FILE",
+        type=str,
+        help="Directly open a file.",
+        nargs="?",
+    )
+
+    args = parser.parse_args()
+
+    if args.filename and not os.path.exists(args.filename):
+        raise ValueError(f"'{args.filename}' does not exist.")
+
     # Launch and open the window.
     app = QtGui.QApplication(sys.argv)
 
@@ -1313,6 +1322,16 @@ def launch():
     window_rect = window.frameGeometry()
     window_rect.moveCenter(QDesktopWidget().availableGeometry().center())
     window.move(window_rect.topLeft())
+
+    # Delayed file open to give some time for the javascript to catch up.
+    if args.filename:
+
+        def delayed_file_open():
+            time.sleep(2)
+            window.open_file(args.filename)
+
+        t = threading.Thread(target=delayed_file_open)
+        t.start()
 
     # Show and bring window to foreground.
     window.show()
