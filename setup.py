@@ -7,6 +7,15 @@ setup(
     author_email="lion.krischer@gmail.com",
     classifiers=["Programming Language :: Python :: 3"],
     packages=find_packages(),
+    package_data={
+        "asdf_sextant": [
+            "icon.png",
+            "resources/index_event.html",
+            "resources/index.html",
+            "resources/script.js",
+            "resources/script_event.js",
+        ]
+    },
     python_requires=">=3.6, <4",
     install_requires=[
         "pyasdf",
