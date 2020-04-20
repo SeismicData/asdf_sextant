@@ -17,9 +17,13 @@ earthquake data.
 ## Installation
 
 ```bash
-$ conda install pyasdf
+$ conda install pyasdf pyside2
 $ pip install asdf-sextant
 ```
+
+It is important to install `pyside2` via `conda` if you use `conda` -
+otherwise it is easy to install some version of Qt with `conda` and another
+via `pip` which just crashes.
 
 ## Usage
 

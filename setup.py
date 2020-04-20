@@ -8,7 +8,7 @@ with open(os.path.join(this_directory, "README.md"), encoding="utf-8") as f:
 
 setup(
     name="asdf-sextant",
-    version="0.1.1",
+    version="0.1.2",
     author="Lion Krischer",
     author_email="lion.krischer@gmail.com",
     description="GUI to explore ASDF files",
