@@ -1,12 +1,12 @@
-from PySide2 import QtGui, QtCore
+from PySide2 import QtGui, QtCore, QtWidgets
 
 
-class StationTreeWidget(QtGui.QTreeWidget):
+class StationTreeWidget(QtWidgets.QTreeWidget):
     cellExited = QtCore.Signal(int, int)
-    itemExited = QtCore.Signal(QtGui.QTreeWidgetItem)
+    itemExited = QtCore.Signal(QtWidgets.QTreeWidgetItem)
 
     def __init__(self, *args, **kwargs):
-        QtGui.QTreeWidget.__init__(self, *args, **kwargs)
+        QtWidgets.QTreeWidget.__init__(self, *args, **kwargs)
         self._last_index = QtCore.QPersistentModelIndex()
         self.viewport().installEventFilter(self)
         self.setMouseTracking(True)
@@ -26,4 +26,4 @@ class StationTreeWidget(QtGui.QTreeWidget):
                     self.itemExited.emit(item)
                 self.cellExited.emit(row, column)
                 self._last_index = QtCore.QPersistentModelIndex(index)
-        return QtGui.QTreeWidget.eventFilter(self, widget, event)
+        return QtWidgets.QTreeWidget.eventFilter(self, widget, event)
