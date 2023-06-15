@@ -1,19 +1,19 @@
-from PySide2 import QtGui, QtSvg, QtCore  # NOQA
+from PySide2 import QtGui, QtSvg, QtCore, QtWidgets  # NOQA
 
 
-class SvgGraphicsView(QtGui.QGraphicsView):
+class SvgGraphicsView(QtWidgets.QGraphicsView):
     def __init__(self, parent=None):
         super(SvgGraphicsView, self).__init__(parent)
 
         # Native renderer
         self.renderer = 0
-        self.setViewport(QtGui.QWidget())
+        self.setViewport(QtWidgets.QWidget())
         self.svgItem = None
 
-        self.setScene(QtGui.QGraphicsScene(self))
-        self.setTransformationAnchor(QtGui.QGraphicsView.AnchorUnderMouse)
-        self.setDragMode(QtGui.QGraphicsView.ScrollHandDrag)
-        self.setViewportUpdateMode(QtGui.QGraphicsView.FullViewportUpdate)
+        self.setScene(QtWidgets.QGraphicsScene(self))
+        self.setTransformationAnchor(QtWidgets.QGraphicsView.AnchorUnderMouse)
+        self.setDragMode(QtWidgets.QGraphicsView.ScrollHandDrag)
+        self.setViewportUpdateMode(QtWidgets.QGraphicsView.FullViewportUpdate)
 
     def open_file(self, filename):
         svg_file = QtCore.QFile(filename)
@@ -27,8 +27,8 @@ class SvgGraphicsView(QtGui.QGraphicsView):
         self.resetTransform()
 
         self.svgItem = QtSvg.QGraphicsSvgItem(svg_file.fileName())
-        self.svgItem.setFlags(QtGui.QGraphicsItem.ItemClipsToShape)
-        self.svgItem.setCacheMode(QtGui.QGraphicsItem.NoCache)
+        self.svgItem.setFlags(QtWidgets.QGraphicsItem.ItemClipsToShape)
+        self.svgItem.setCacheMode(QtWidgets.QGraphicsItem.NoCache)
         self.svgItem.setZValue(0)
 
         s.addItem(self.svgItem)

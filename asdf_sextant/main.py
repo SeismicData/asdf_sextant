@@ -8,7 +8,7 @@ Graphical utility to visualize ASDF files.
 :license:
     MIT
 """
-from PySide2 import QtGui, QtCore
+from PySide2 import QtGui, QtCore, QtWidgets
 from PySide2.QtWidgets import QDesktopWidget
 import pyqtgraph as pg
 import qdarkstyle
@@ -28,9 +28,12 @@ from obspy.core import AttribDict
 import obspy.core.event
 import pyasdf
 
-from .DateAxisItem import DateAxisItem
-from . import asdf_sextant_window
-from .python_syntax_highlighting import PythonHighlighter
+#from .DateAxisItem import DateAxisItem
+#from . import asdf_sextant_window
+#from .python_syntax_highlighting import PythonHighlighter
+from DateAxisItem import DateAxisItem
+import asdf_sextant_window
+from python_syntax_highlighting import PythonHighlighter
 
 
 # Enums only exists in Python 3 and we don't really need them here...
@@ -143,9 +146,9 @@ def resolve_filename(filename):
     return __filename_memoization_dict[filename]
 
 
-class Window(QtGui.QMainWindow):
+class Window(QtWidgets.QMainWindow):
     def __init__(self):
-        QtGui.QMainWindow.__init__(self)
+        QtWidgets.QMainWindow.__init__(self)
         self.ui = asdf_sextant_window.Ui_MainWindow()  # NOQA
         self.ui.setupUi(self)
 
@@ -305,7 +308,7 @@ class Window(QtGui.QMainWindow):
                 "/".join([_i[:1] for _i in _f[:-1]] + _f[-1:]),
             )
 
-            item = QtGui.QListWidgetItem(
+            item = QtWidgets.QListWidgetItem(
                 make_icon(colors=[info["color"]]), text
             )
             # Make it non-selectable.
@@ -348,7 +351,7 @@ class Window(QtGui.QMainWindow):
         # Also add the auxiliary data.
         def recursive_tree(name, item):
             if isinstance(item, pyasdf.utils.AuxiliaryDataAccessor):
-                data_type_item = QtGui.QTreeWidgetItem(
+                data_type_item = QtWidgets.QTreeWidgetItem(
                     [name], type=AUX_DATA_ITEM_TYPES["DATA_TYPE"]
                 )
                 children = []
@@ -356,7 +359,7 @@ class Window(QtGui.QMainWindow):
                     children.append(recursive_tree(sub_item, item[sub_item]))
                 data_type_item.addChildren(children)
             elif isinstance(item, pyasdf.utils.AuxiliaryDataContainer):
-                data_type_item = QtGui.QTreeWidgetItem(
+                data_type_item = QtWidgets.QTreeWidgetItem(
                     [name], type=AUX_DATA_ITEM_TYPES["DATA_ITEM"]
                 )
             else:
@@ -380,7 +383,7 @@ class Window(QtGui.QMainWindow):
                 )
             if not items:
                 continue
-            f = QtGui.QTreeWidgetItem([filename])
+            f = QtWidgets.QTreeWidgetItem([filename])
             f.setIcon(0, make_icon([info["color"]]))
             f.addChildren(items)
             file_items.append(f)
@@ -455,19 +458,19 @@ class Window(QtGui.QMainWindow):
                 )
                 self.ui.events_web_engine_view.page().runJavaScript(js_call)
 
-            event_item = QtGui.QTreeWidgetItem(
+            event_item = QtWidgets.QTreeWidgetItem(
                 [event.resource_id.id], type=EVENT_VIEW_ITEM_TYPES["EVENT"]
             )
             self._state["quake_ids"][event.resource_id.id] = event_item
 
-            origin_item = QtGui.QTreeWidgetItem(["Origins"], type=-1)
-            magnitude_item = QtGui.QTreeWidgetItem(["Magnitudes"], type=-1)
-            focmec_item = QtGui.QTreeWidgetItem(["Focal Mechanisms"], type=-1)
+            origin_item = QtWidgets.QTreeWidgetItem(["Origins"], type=-1)
+            magnitude_item = QtWidgets.QTreeWidgetItem(["Magnitudes"], type=-1)
+            focmec_item = QtWidgets.QTreeWidgetItem(["Focal Mechanisms"], type=-1)
 
             org_items = []
             for origin in event.origins:
                 org_items.append(
-                    QtGui.QTreeWidgetItem(
+                    QtWidgets.QTreeWidgetItem(
                         [origin.resource_id.id],
                         type=EVENT_VIEW_ITEM_TYPES["ORIGIN"],
                     )
@@ -478,7 +481,7 @@ class Window(QtGui.QMainWindow):
             mag_items = []
             for magnitude in event.magnitudes:
                 mag_items.append(
-                    QtGui.QTreeWidgetItem(
+                    QtWidgets.QTreeWidgetItem(
                         [magnitude.resource_id.id],
                         type=EVENT_VIEW_ITEM_TYPES["MAGNITUDE"],
                     )
@@ -491,7 +494,7 @@ class Window(QtGui.QMainWindow):
             focmec_items = []
             for focmec in event.focal_mechanisms:
                 focmec_items.append(
-                    QtGui.QTreeWidgetItem(
+                    QtWidgets.QTreeWidgetItem(
                         [focmec.resource_id.id],
                         type=EVENT_VIEW_ITEM_TYPES["FOCMEC"],
                     )
@@ -535,14 +538,14 @@ class Window(QtGui.QMainWindow):
             all_stations, key=lambda x: x[0].split(".")[0]
         ):
 
-            network_item = QtGui.QTreeWidgetItem(
+            network_item = QtWidgets.QTreeWidgetItem(
                 [key], type=STATION_VIEW_ITEM_TYPES["NETWORK"]
             )
             all_colors_for_network = set()
             group = sorted(group, key=lambda x: x[0])
 
             for name, content in group:
-                station_item = QtGui.QTreeWidgetItem(
+                station_item = QtWidgets.QTreeWidgetItem(
                     [name.split(".")[-1]],
                     type=STATION_VIEW_ITEM_TYPES["STATION"],
                 )
@@ -559,7 +562,7 @@ class Window(QtGui.QMainWindow):
                     all_colors_for_station.update(c)
                     icon = make_icon(colors=c)
                     children.append(
-                        QtGui.QTreeWidgetItem(
+                        QtWidgets.QTreeWidgetItem(
                             [tag], type=STATION_VIEW_ITEM_TYPES["STATIONXML"]
                         )
                     )
@@ -572,7 +575,7 @@ class Window(QtGui.QMainWindow):
                     all_colors_for_station.update(c)
                     icon = make_icon(colors=c)
                     children.append(
-                        QtGui.QTreeWidgetItem(
+                        QtWidgets.QTreeWidgetItem(
                             [tag], type=STATION_VIEW_ITEM_TYPES["WAVEFORM"]
                         )
                     )
@@ -589,7 +592,7 @@ class Window(QtGui.QMainWindow):
 
     @QtCore.Slot()
     def on_close_file_button_released(self):
-        popup = QtGui.QMenu()
+        popup = QtWidgets.QMenu()
 
         for filename, info in self._open_files.items():
 
@@ -641,7 +644,7 @@ class Window(QtGui.QMainWindow):
             except Exception:
                 pass
         else:
-            msg_box = QtGui.QMessageBox()
+            msg_box = QtWidgets.QMessageBox()
             msg_box.setText("Could not find provenance document.")
             msg_box.exec_()
             return
@@ -685,7 +688,7 @@ class Window(QtGui.QMainWindow):
             return
         objects = self._state["current_station_objects"]
 
-        main_popup = QtGui.QMenu()
+        main_popup = QtWidgets.QMenu()
 
         for filename, obj in objects.items():
             ds = self._open_files[filename]["ds"]
@@ -739,10 +742,10 @@ class Window(QtGui.QMainWindow):
         """
         Fill the station tree widget upon opening a new file.
         """
-        filename = QtGui.QFileDialog.getOpenFileName(
+        filename = QtWidgets.QFileDialog.getOpenFileName(
             parent=self,
             caption="Choose File",
-            directory=self._state["file_open_dir"],
+            dir=self._state["file_open_dir"],
             filter="ASDF files (*.h5)",
         )
         if not filename:
@@ -877,7 +880,7 @@ class Window(QtGui.QMainWindow):
                 doc = v["ds"].provenance[document_name]
                 break
         else:
-            msg_box = QtGui.QMessageBox()
+            msg_box = QtWidgets.QMessageBox()
             msg_box.setText("Could not find provenance document.")
             msg_box.exec_()
             return
@@ -886,7 +889,7 @@ class Window(QtGui.QMainWindow):
 
         self.ui.provenance_graphics_view.open_file(self._tempfile)
 
-    @QtCore.Slot(QtGui.QTreeWidgetItem, int)
+    @QtCore.Slot(QtWidgets.QTreeWidgetItem, int)
     def on_station_view_itemClicked(self, item, column):
         t = item.type()
 
@@ -916,7 +919,7 @@ class Window(QtGui.QMainWindow):
                         continue
                     break
             else:
-                msg_box = QtGui.QMessageBox()
+                msg_box = QtWidgets.QMessageBox()
                 msg_box.setText("Could not find StationXML document.")
                 msg_box.exec_()
                 return
@@ -947,7 +950,7 @@ class Window(QtGui.QMainWindow):
         else:
             pass
 
-    @QtCore.Slot(QtGui.QTreeWidgetItem, int)
+    @QtCore.Slot(QtWidgets.QTreeWidgetItem, int)
     def on_event_tree_widget_itemClicked(self, item, column):
         t = item.type()
         if t not in EVENT_VIEW_ITEM_TYPES.values():
@@ -959,7 +962,7 @@ class Window(QtGui.QMainWindow):
 
         obj = res_id.get_referred_object()
         if obj is None:
-            msg_box = QtGui.QMessageBox()
+            msg_box = QtWidgets.QMessageBox()
             msg_box.setText("Did not find the correct event.")
             msg_box.exec_()
             return
@@ -979,7 +982,7 @@ class Window(QtGui.QMainWindow):
         js_call = "highlightEvent('{event_id}');".format(event_id=event)
         self.ui.events_web_engine_view.page().runJavaScript(js_call)
 
-    @QtCore.Slot(QtGui.QTreeWidgetItem, int)
+    @QtCore.Slot(QtWidgets.QTreeWidgetItem, int)
     def on_auxiliary_data_tree_view_itemClicked(self, item, column):
         t = item.type()
         if t != AUX_DATA_ITEM_TYPES["DATA_ITEM"]:
@@ -1068,7 +1071,8 @@ class Window(QtGui.QMainWindow):
                 first_plot = None
                 for _i in range(aux_data.data.shape[0]):
                     plot = graph.addPlot(_i, 0)
-                    plot.plot(aux_data.data.value[_i])
+                    #plot.plot(aux_data.data.value[_i])
+                    plot.plot(aux_data.data[_i])
                     # Link plots.
                     if _i == 0:
                         first_plot = plot
@@ -1081,7 +1085,8 @@ class Window(QtGui.QMainWindow):
             # Otherwise assume its a 2D image.
             else:
                 img = pg.ImageItem(border="#3D8EC9")
-                img.setImage(aux_data.data.value)
+                #img.setImage(aux_data.data.value)
+                img.setImage(aux_data.data[:])
                 vb = graph.addViewBox()
                 vb.setAspectLocked(True)
                 vb.addItem(img)
@@ -1107,17 +1112,17 @@ class Window(QtGui.QMainWindow):
         tv.setRowCount(len(aux_data.parameters))
         tv.setColumnCount(2)
         tv.setHorizontalHeaderLabels(["Parameter", "Value"])
-        tv.horizontalHeader().setResizeMode(QtGui.QHeaderView.Stretch)
+        tv.horizontalHeader().setResizeMode(QtWidgets.QHeaderView.Stretch)
         tv.verticalHeader().hide()
 
         for _i, key in enumerate(sorted(aux_data.parameters.keys())):
-            key_item = QtGui.QTableWidgetItem(key)
+            key_item = QtWidgets.QTableWidgetItem(key)
             v = aux_data.parameters[key]
             try:
                 v = v.decode()
             except Exception:
                 pass
-            value_item = QtGui.QTableWidgetItem(str(v))
+            value_item = QtWidgets.QTableWidgetItem(str(v))
 
             tv.setItem(_i, 0, key_item)
             tv.setItem(_i, 1, value_item)
@@ -1139,12 +1144,12 @@ class Window(QtGui.QMainWindow):
         tv.setRowCount(len(details))
         tv.setColumnCount(2)
         tv.setHorizontalHeaderLabels(["Attribute", "Value"])
-        tv.horizontalHeader().setResizeMode(QtGui.QHeaderView.Stretch)
+        tv.horizontalHeader().setResizeMode(QtWidgets.QHeaderView.Stretch)
         tv.verticalHeader().hide()
 
         for _i, item in enumerate(details):
-            key_item = QtGui.QTableWidgetItem(item[0])
-            value_item = QtGui.QTableWidgetItem(item[1])
+            key_item = QtWidgets.QTableWidgetItem(item[0])
+            value_item = QtWidgets.QTableWidgetItem(item[1])
 
             tv.setItem(_i, 0, key_item)
             tv.setItem(_i, 1, value_item)
@@ -1159,7 +1164,7 @@ class Window(QtGui.QMainWindow):
 
         self.show_provenance_document(data)
 
-    @QtCore.Slot(QtGui.QTreeWidgetItem)
+    @QtCore.Slot(QtWidgets.QTreeWidgetItem)
     def on_station_view_itemEntered(self, item):
         t = item.type()
 
@@ -1199,7 +1204,7 @@ class Window(QtGui.QMainWindow):
         self.ui.web_engine_view.page().runJavaScript(js_call)
 
 
-class NoTabQPlainTextEdit(QtGui.QPlainTextEdit):
+class NoTabQPlainTextEdit(QtWidgets.QPlainTextEdit):
     def __init__(self, *args, **kwargs):
         super(NoTabQPlainTextEdit, self).__init__(*args, **kwargs)
 
@@ -1221,16 +1226,16 @@ class NoTabQPlainTextEdit(QtGui.QPlainTextEdit):
             self.setPlainText(txt)
 
 
-class ProcessingScriptDialog(QtGui.QDialog):
+class ProcessingScriptDialog(QtWidgets.QDialog):
     def __init__(self, parent=None, script=""):
         super(ProcessingScriptDialog, self).__init__(parent)
         self.resize(800, 500)
 
         self.setWindowTitle("Edit Custom Processing Script")
 
-        layout = QtGui.QVBoxLayout(self)
+        layout = QtWidgets.QVBoxLayout(self)
 
-        label = QtGui.QLabel(
+        label = QtWidgets.QLabel(
             "Edit this script for flexible custom "
             "processing using all of ObsPy and the Python "
             "ecosystem!"
@@ -1245,8 +1250,8 @@ class ProcessingScriptDialog(QtGui.QDialog):
         layout.addWidget(self.editor)
 
         # OK and Cancel buttons
-        buttons = QtGui.QDialogButtonBox(
-            QtGui.QDialogButtonBox.Ok | QtGui.QDialogButtonBox.Cancel,
+        buttons = QtWidgets.QDialogButtonBox(
+            QtWidgets.QDialogButtonBox.Ok | QtWidgets.QDialogButtonBox.Cancel,
             QtCore.Qt.Horizontal,
             self,
         )
@@ -1262,7 +1267,7 @@ class ProcessingScriptDialog(QtGui.QDialog):
     def edit(script, parent=None):
         dialog = ProcessingScriptDialog(parent=parent, script=script)
         result = dialog.exec_()
-        return (dialog.get_script(), result == QtGui.QDialog.Accepted)
+        return (dialog.get_script(), result == QtWidgets.QDialog.Accepted)
 
 
 class _DynamicModule(object):
@@ -1301,7 +1306,7 @@ def launch():
         raise ValueError(f"'{args.filename}' does not exist.")
 
     # Launch and open the window.
-    app = QtGui.QApplication(sys.argv)
+    app = QtWidgets.QApplication(sys.argv)
 
     # Set application name for OS - does not work on OSX but seems to work
     # on others.
